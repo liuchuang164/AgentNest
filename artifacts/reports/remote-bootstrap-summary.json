@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-11T16:22:36.493Z",
+  "target": "redacted",
+  "expected_openclaw_version": "2026.6.11",
+  "observed": {
+    "BOOTSTRAP": "PASS",
+    "NODE_VERSION": "v24.18.0",
+    "NPM_VERSION": "11.16.0",
+    "PNPM_VERSION": "11.11.0",
+    "DOCKER_VERSION": "Docker version 29.6.1, build 8900f1d",
+    "COMPOSE_VERSION": "Docker Compose version v5.3.1",
+    "OPENCLAW_VERSION": "OpenClaw 2026.6.11 (e085fa1)",
+    "OPENCLAW_SCHEMA_SHA256": "d94f740aae95abfb2d54137737d390c114b9e89cf83f0ef5796da2cf05899b29"
+  },
+  "status": "PASS"
+}

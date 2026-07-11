@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-11T16:50:44.793Z",
+  "target": "redacted",
+  "expected_openclaw_version": "2026.6.11",
+  "model_provider": "qwen",
+  "model_name": "qwen/qwen3.5-plus",
+  "profile_ids": [
+    "main",
+    "tb_9fa3d61c2d63ee4285ee",
+    "l2_1ee8b76803c47fec5571",
+    "tb_9345ba25d7668764fb8a",
+    "l2_e97c51a415624cc4070a",
+    "tb_4a8ee1cd63e0adcad74e",
+    "l2_8a44c1992bee4a477b17"
+  ],
+  "distinct_workspaces": 7,
+  "distinct_agent_dirs": 7,
+  "observed": {
+    "CONFIGURE": "PASS",
+    "PROFILE_COUNT": "7",
+    "MODEL_PROVIDER": "qwen",
+    "MODEL_NAME": "qwen/qwen3.5-plus",
+    "GATEWAY_READY": "yes",
+    "DOCTOR_ERROR_COUNT": "0",
+    "OPENCLAW_SCHEMA_SHA256": "d94f740aae95abfb2d54137737d390c114b9e89cf83f0ef5796da2cf05899b29"
+  },
+  "status": "PASS"
+}

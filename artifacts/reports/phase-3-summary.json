@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "phase": 3,
+  "status": "BLOCKED_EXTERNAL",
+  "generated_at": "2026-07-11T16:55:59Z",
+  "branch": "codex/lean-demo",
+  "base_commit": "6b46e406a96d05454b2e1d86dc1f99195cc8635f",
+  "runtime": {
+    "local_node": "v24.15.0",
+    "local_pnpm": "11.11.0",
+    "remote_node": "v24.18.0",
+    "remote_pnpm": "11.11.0"
+  },
+  "openclaw": {
+    "version": "2026.6.11",
+    "commit": "e085fa1",
+    "channel": "stable",
+    "schema_sha256": "d94f740aae95abfb2d54137737d390c114b9e89cf83f0ef5796da2cf05899b29",
+    "gateway_bind": "loopback",
+    "gateway_rpc": "PASS",
+    "doctor_error_count": 0
+  },
+  "profiles": {
+    "count": 7,
+    "distinct_workspaces": 7,
+    "distinct_agent_dirs": 7,
+    "main_business_tools": [],
+    "l1_count": 3,
+    "l2_count": 3,
+    "skill_tool_isolation": "PASS",
+    "l2_configured_subset": "PASS"
+  },
+  "gate": {
+    "install_frozen": "PASS",
+    "format_check": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "unit": {
+      "status": "PASS",
+      "files": 12,
+      "tests": 54,
+      "adapter_tests": 17
+    },
+    "contract": {
+      "status": "PASS",
+      "files": 3,
+      "tests": 13
+    },
+    "integration": {
+      "status": "PASS",
+      "files": 1,
+      "tests": 2
+    },
+    "secret_scan": "PASS",
+    "diff_check": "PASS",
+    "real_l0_l1_l2": "BLOCKED_EXTERNAL"
+  },
+  "external_blocker": {
+    "provider": "qwen",
+    "http_status": 400,
+    "code": "Arrearage",
+    "category": "ACCOUNT_NOT_IN_GOOD_STANDING",
+    "credential_rotation_required": true
+  },
+  "deferred": [
+    "successful real L0-L1-L2 model execution and native L2 session evidence",
+    "Gateway Mock tool execution",
+    "memory lifecycle and recovery"
+  ]
+}

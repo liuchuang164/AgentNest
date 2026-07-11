@@ -15,11 +15,13 @@ AgentNest 是一个基于 **OpenClaw 官方最新稳定版**的三层多租户 A
 
 ## 当前实现状态
 
-Phase 2 的精简 Tenant Capability Profile、任务能力交集、稳定 L1 逻辑 ID、PostgreSQL 权威 Profile/Runtime Registry adapter、进程内可重建 cache、三组 Demo seed 和路径约束已落地。真实执行证据见 [`artifacts/reports/phase-2-summary.md`](artifacts/reports/phase-2-summary.md)。本地环境没有 PostgreSQL/Docker，因此当前 adapter integration 使用协议兼容的 recording client；真实 PostgreSQL migration、OpenClaw 三层 E2E、生命周期和远端部署仍需在后续阶段验证，当前不得把 Phase 2 结果解释为 Demo 完成。
+Phase 2 的精简 Tenant Capability Profile、任务能力交集、稳定 L1 逻辑 ID、PostgreSQL 权威 Profile/Runtime Registry adapter、进程内可重建 cache、三组 Demo seed 和路径约束已落地。Phase 3 已在远端安装并启动 OpenClaw stable `2026.6.11 (e085fa1)`，配置并观察到固定 L0、3 个 L1 和 3 个 L2 的独立 Profile、workspace、agentDir 与 Skill/Tool allowlist。本地 Gate 与远端 Gateway RPC/doctor 已通过，但真实三层模型链路被百炼 `400 Arrearage` 账号账务状态阻断，尚不得宣称 Demo 完成。证据见 [`artifacts/reports/phase-2-summary.md`](artifacts/reports/phase-2-summary.md) 和 [`artifacts/reports/phase-3-summary.md`](artifacts/reports/phase-3-summary.md)。
 
 ## OpenClaw 基线
 
 只使用官方 stable channel。部署时必须重新解析并记录实际稳定版本，禁止 beta、alpha、RC、dev 和未发布 `main` 特性。
+
+当前远端记录：`OpenClaw 2026.6.11 (e085fa1)`，Schema SHA-256 `d94f740aae95abfb2d54137737d390c114b9e89cf83f0ef5796da2cf05899b29`。
 
 官方参考：
 

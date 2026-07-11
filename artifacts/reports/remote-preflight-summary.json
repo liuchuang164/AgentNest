@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-11T16:17:15.859Z",
+  "target": "redacted",
+  "ssh": {
+    "connected": true,
+    "auth_mode": "password",
+    "host_key_fingerprint": "SHA256:a2fMlWbZ8lsNYVHw875nlbD0FRvsMPV98ZqzZz59Awc"
+  },
+  "environment": {
+    "OS_ID": "ubuntu",
+    "OS_VERSION": "22.04",
+    "ARCH": "x86_64",
+    "KERNEL": "5.15.0-119-generic",
+    "CPU_COUNT": "4",
+    "MEMORY_MIB": "15221",
+    "DISK_FREE_MIB": "90829",
+    "WORKDIR_EXISTS": "yes",
+    "WORKDIR_IS_DIRECTORY": "yes",
+    "WORKDIR_WRITABLE": "yes",
+    "SUDO_AVAILABLE": "yes",
+    "SUDO_NONINTERACTIVE": "yes",
+    "NODE_VERSION": "v24.18.0",
+    "NPM_VERSION": "11.16.0",
+    "PNPM_VERSION": "11.11.0",
+    "DOCKER_VERSION": "Docker version 29.6.1, build 8900f1d",
+    "COMPOSE_VERSION": "Docker Compose version v5.3.1",
+    "DOCKER_DAEMON": "unreachable",
+    "AGENTNEST_CONTAINER_CONFLICTS": "none",
+    "GIT_VERSION": "git version 2.34.1",
+    "CURL_VERSION": "curl 7.81.0 (x86_64-pc-linux-gnu) libcurl/7.81.0 OpenSSL/3.0.2 zlib/1.2.11 brotli/1.0.9 zstd/1.4.8 libidn2/2.3.2 libpsl/0.21.0 (+libidn2/2.3.2) libssh/0.9.6/openssl/zlib nghttp2/1.43.0 librtmp/2.3 OpenLDAP/2.5.16",
+    "OPENCLAW_VERSION": "OpenClaw 2026.6.11 (e085fa1)",
+    "PORT_18789": "free",
+    "PORT_18080": "free",
+    "PORT_18081": "free",
+    "PORT_18082": "free",
+    "PORT_15432": "free"
+  },
+  "openclaw_stable": {
+    "version": "2026.6.11",
+    "source": "https://registry.npmjs.org/openclaw/latest"
+  },
+  "blockers": [],
+  "required_actions": [],
+  "read_only": true
+}

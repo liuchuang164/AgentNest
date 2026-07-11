@@ -16,36 +16,36 @@
 
 ## B. OpenClaw
 
-- [ ] 安装官方 stable 版本。证据：
-- [ ] 版本不含 beta/alpha/rc/dev。证据：
-- [ ] `openclaw doctor` 无阻断问题。证据：
-- [ ] `openclaw gateway status` 健康。证据：
-- [ ] 第一版未修改 OpenClaw 核心源码。证据：
+- [x] 安装官方 stable 版本。证据：`artifacts/reports/remote-bootstrap-summary.json`
+- [x] 版本不含 beta/alpha/rc/dev。证据：`artifacts/reports/phase-3-summary.md`
+- [x] `openclaw doctor` 无阻断问题。证据：`artifacts/reports/remote-phase3-config-summary.json`
+- [x] `openclaw gateway status` RPC 健康。证据：`artifacts/reports/phase-3-summary.md`
+- [x] 第一版未修改 OpenClaw 核心源码。证据：仅使用官方 CLI/config 和外部 Qwen plugin，`artifacts/reports/phase-3-summary.md`
 
 ## C. L0 Main Agent
 
-- [ ] Main Agent 只拥有 L1 ensure/dispatch/status 能力。证据：
-- [ ] Main Agent 看不到 LEGAL/ROBOT_DOG 业务 Skill。证据：
-- [ ] Main Agent 不直接调用业务 Tool。证据：
+- [x] Main Agent 只拥有 L1 dispatch/status 能力。证据：`artifacts/reports/phase-3-summary.md`
+- [x] Main Agent 看不到 LEGAL/ROBOT_DOG 业务 Skill。证据：远端 observed `skills: []`，`artifacts/reports/phase-3-summary.md`
+- [x] Main Agent 不可调用业务 Tool。证据：六个业务 Tool 显式 deny，`artifacts/reports/phase-3-summary.md`
 
 ## D. L1 TenantBizAgent
 
-- [ ] 创建 `tenant_A + LEGAL` L1。证据：
-- [ ] 创建 `tenant_A + ROBOT_DOG` L1。证据：
-- [ ] 创建 `tenant_B + LEGAL` L1。证据：
-- [ ] 三者 `agentId` 不同。证据：
-- [ ] 三者 workspace 不同。证据：
-- [ ] 三者 agentDir 不同。证据：
-- [ ] 三者 Session namespace 不同。证据：
-- [ ] Skill allowlist 与 tenant/biz 配置一致。证据：
-- [ ] Tool allowlist 与 tenant/biz 配置一致。证据：
-- [ ] 相同 tenant/biz 重复请求复用 `logical_agent_id`。证据：
+- [x] 创建 `tenant_A + LEGAL` L1。证据：`tb_9fa3d61c2d63ee4285ee`，`artifacts/reports/phase-3-summary.md`
+- [x] 创建 `tenant_A + ROBOT_DOG` L1。证据：`tb_9345ba25d7668764fb8a`，`artifacts/reports/phase-3-summary.md`
+- [x] 创建 `tenant_B + LEGAL` L1。证据：`tb_4a8ee1cd63e0adcad74e`，`artifacts/reports/phase-3-summary.md`
+- [x] 三者 `agentId` 不同。证据：`artifacts/reports/remote-phase3-config-summary.json`
+- [x] 三者 workspace 不同。证据：7/7 distinct，`artifacts/reports/remote-phase3-config-summary.json`
+- [x] 三者 agentDir 不同。证据：7/7 distinct，`artifacts/reports/remote-phase3-config-summary.json`
+- [x] 三者 Session namespace 不同。证据：每 Profile 独立 agentDir，`artifacts/reports/phase-3-summary.md`
+- [x] Skill allowlist 与 tenant/biz 配置一致。证据：远端 observed config，`artifacts/reports/phase-3-summary.md`
+- [x] Tool allowlist 与 tenant/biz 配置一致。证据：远端 observed config，`artifacts/reports/phase-3-summary.md`
+- [x] 相同 tenant/biz 重复请求复用 `logical_agent_id`。证据：`ensure-tenant-biz-agent.unit.test.ts`
 
 ## E. L2 TaskAgent
 
 - [ ] L1 使用原生 `sessions_spawn` 创建 L2。证据：
 - [ ] L2 使用独立 Session。证据：
-- [ ] L2 Skill/Tool 是 L1 的子集。证据：
+- [x] L2 配置的 Skill/Tool 是 L1 的子集。证据：远端 3 个 L1/L2 observed Profile，`artifacts/reports/phase-3-summary.md`
 - [ ] L2 请求父级未授权能力时被拒绝。证据：
 - [ ] LEGAL happy path 完成。证据：
 - [ ] ROBOT_DOG happy path 完成。证据：
@@ -62,8 +62,8 @@
 
 ## G. Skill 隔离
 
-- [ ] LEGAL Agent 看不到 Robot Skill。证据：
-- [ ] Robot Agent 看不到 Legal Skill。证据：
+- [x] LEGAL Agent 看不到 Robot Skill。证据：远端 observed Skill allowlist，`artifacts/reports/phase-3-summary.md`
+- [x] Robot Agent 看不到 Legal Skill。证据：远端 observed Skill allowlist，`artifacts/reports/phase-3-summary.md`
 - [ ] Prompt 写出未授权 Skill 名称仍不能执行。证据：
 
 ## H. Memory 隔离
@@ -98,12 +98,12 @@
 
 ## K. 云端部署
 
-- [ ] `config.txt` 未进入 Git 或报告。证据：
+- [x] `config.txt` 未进入 Git 或报告。证据：`pnpm secret:scan`，`artifacts/reports/phase-3-summary.md`
 - [ ] 干净服务器部署成功。证据：
 - [ ] 第二次部署可重复执行。证据：
 - [ ] OpenClaw、PostgreSQL、Admin API 未裸露公网。证据：
 - [ ] `pnpm demo:verify` 非交互运行并退出码为 0。证据：
-- [ ] README 记录实际 OpenClaw stable 版本。证据：
+- [x] README 记录实际 OpenClaw stable 版本。证据：`README.md`
 - [ ] 验证报告明确区分真实 OpenClaw 链路与 Mock Tool。证据：
 
 ## L. 非验收项

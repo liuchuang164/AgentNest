@@ -19,7 +19,11 @@
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:contract": "pnpm contracts:check && vitest run --config vitest.contract.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "secret:scan": "tsx scripts/verify/secret-scan.ts"
+    "secret:scan": "tsx scripts/verify/secret-scan.ts",
+    "demo:preflight": "tsx scripts/deploy/preflight.ts",
+    "demo:install-openclaw": "tsx scripts/deploy/install-openclaw.ts",
+    "demo:configure-openclaw": "tsx scripts/deploy/configure-openclaw.ts",
+    "demo:verify-phase3": "tsx scripts/verify/phase3-openclaw.ts"
   },
   "devDependencies": {
     "@agentnest/capability": "workspace:*",

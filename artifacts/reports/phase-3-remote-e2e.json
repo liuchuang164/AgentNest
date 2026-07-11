@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-11T17:06:07.766Z",
+  "target": "redacted",
+  "status": "BLOCKED_EXTERNAL",
+  "openclaw": {
+    "expected_version": "2026.6.11",
+    "observed_version": "2026.6.11",
+    "observed_commit": "e085fa1",
+    "version_output": "OpenClaw 2026.6.11 (e085fa1)",
+    "gateway": {
+      "command_succeeded": true,
+      "rpc_ready": true,
+      "mode": "local",
+      "bind": "loopback",
+      "port": 18789
+    },
+    "doctor": {
+      "command_succeeded": true,
+      "error_count": 0,
+      "warning_count": 0
+    }
+  },
+  "probe": {
+    "task_id": "p3_f81d9219bf3a05ab",
+    "tenant_id": "tenant_A",
+    "biz_domain": "LEGAL",
+    "task_type": "LEGAL_EVIDENCE_CHECK",
+    "phase3_chain_probe": true,
+    "main_session_key": "agent:main:p3-f81d9219bf3a05ab",
+    "main_run_id": null,
+    "main_final_output": null,
+    "l1_agent_id": "tb_9fa3d61c2d63ee4285ee",
+    "l1_session_key": "agent:tb_9fa3d61c2d63ee4285ee:main",
+    "l2_agent_id": "l2_1ee8b76803c47fec5571",
+    "l2_run_id": null,
+    "l2_child_session_key": null,
+    "l2_marker": null,
+    "session_evidence": {
+      "main_probe_observed": true,
+      "l1_stable_observed": false,
+      "l2_child_observed": false
+    },
+    "native_sessions_spawn_task_evidence": false,
+    "l1_child_link_evidence": false,
+    "persisted_child_marker_evidence": false,
+    "embedded_fallback_observed": false
+  },
+  "profiles": {
+    "observed_ids": ["main", "tb_9fa3d61c2d63ee4285ee", "l2_1ee8b76803c47fec5571"],
+    "distinct_workspaces": true,
+    "distinct_agent_dirs": true,
+    "expected_paths_observed": true
+  },
+  "skills": {
+    "main": [],
+    "l1": ["legal-evidence-check"],
+    "l2": ["legal-evidence-check"],
+    "isolation_passed": true
+  },
+  "tools": {
+    "configured": {
+      "main_allow": ["sessions_send", "session_status"],
+      "main_deny": [
+        "legal_analysis_write",
+        "legal_case_read",
+        "legal_research_query",
+        "robot_device_read",
+        "robot_health_write",
+        "robot_telemetry_enrich"
+      ],
+      "l1_allow": [
+        "sessions_spawn",
+        "sessions_yield",
+        "subagents",
+        "session_status",
+        "legal_analysis_write",
+        "legal_case_read",
+        "legal_research_query"
+      ],
+      "l1_deny": ["robot_device_read", "robot_health_write", "robot_telemetry_enrich"],
+      "l2_allow": ["legal_analysis_write", "legal_case_read", "legal_research_query"],
+      "l2_deny": ["robot_device_read", "robot_health_write", "robot_telemetry_enrich"],
+      "isolation_passed": true
+    },
+    "effective": {
+      "main": {
+        "available": true,
+        "tools": ["session_status", "sessions_send"]
+      },
+      "l1": {
+        "available": false,
+        "tools": []
+      },
+      "l2": {
+        "available": false,
+        "tools": []
+      },
+      "isolation_passed": false
+    }
+  },
+  "external_blocker": {
+    "provider": "qwen",
+    "http_status": 400,
+    "code": "Arrearage",
+    "message": "The model-provider account is in arrears or not in good standing."
+  },
+  "claims": {
+    "openclaw_chain": "NOT_COMPLETED",
+    "gateway_rpc_method": "openclaw gateway call agent",
+    "embedded_fallback_used": false,
+    "business_tool_execution": "NOT_RUN_PHASE3_CHAIN_PROBE",
+    "gateway_mock_claimed": false
+  },
+  "official_stable": {
+    "version": "2026.6.11",
+    "source": "https://registry.npmjs.org/openclaw/latest"
+  }
+}
