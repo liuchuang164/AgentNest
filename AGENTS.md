@@ -1,6 +1,8 @@
-# AGENTS.md — AgentNest Codex 最高优先级约束
+# AGENTS.md — AgentNest Demo 最高优先级约束
 
-本文件适用于整个仓库。Codex、OpenClaw 内部编码 Agent、其他自动化开发 Agent 在修改任何文件、连接远端服务器或运行测试前，必须完整阅读并遵守本文件。
+本文件适用于整个仓库。Codex 或其他开发 Agent 在修改代码、连接远端服务器或运行部署前，必须先阅读本文件。
+
+本项目是一个**技术验证 Demo**，目标是尽快证明三层 Agent、租户业务隔离、生命周期卸载和状态恢复可行。不要把它扩展成生产级零信任、金融级审计或高可用平台。
 
 规范关键词：**必须（MUST）**、**禁止（MUST NOT）**、**应该（SHOULD）**。
 
@@ -8,7 +10,7 @@
 
 ## 1. 唯一任务目标
 
-构建一个可部署、可自动验证的 OpenClaw 三层多租户 Agent Demo：
+实现并验证：
 
 ```text
 L0 Main Agent
@@ -16,423 +18,341 @@ L0 Main Agent
        └─ L2 TaskAgent
 ```
 
-验证重点不是模型回答质量，而是以下技术属性：
+Demo 必须证明：
 
-1. `tenant_id + biz_domain` 的运行态、Skill、Tool、Memory、Session 和 Trace 隔离；
-2. L2 权限只能是 L1 权限的子集，禁止权限提升；
-3. L1/L2 运行态可超时卸载；
-4. 卸载前 Session、Memory、Trace、TaskState 可持久化；
-5. 后续请求可创建新的运行实例并恢复必要状态；
-6. Data/External Gateway Mock 可在模型或插件越权时进行硬拒绝；
-7. OpenClaw 和 AgentNest 进程重启后，状态可恢复且不会出现幽灵 Agent。
+1. 相同 `tenant_id + biz_domain` 复用同一个逻辑 L1；
+2. 不同租户或业务域使用独立 L1 Profile、workspace、agentDir、Session 和 Memory namespace；
+3. L1 使用显式 Skill allowlist 和 Tool allowlist；
+4. L2 只能获得 L1 权限的子集；
+5. L1/L2 可按 TTL 卸载运行态；
+6. 卸载前 Session Summary、Memory、Trace 和 TaskState 可持久化；
+7. 后续请求可以创建新的运行实例并恢复必要状态；
+8. 至少一条任务真实经过 OpenClaw 的 L0 → L1 → `sessions_spawn` → L2 链路。
+
+模型回答质量不是主要验收指标。
 
 ---
 
 ## 2. 不可改变的架构决策
 
-### 2.1 L0
+### 2.1 L0 Main Agent
 
-- L0 是固定的 OpenClaw `main` Agent Profile。
-- L0 仅负责请求解析、租户业务路由、L1 ensure/activate/dispatch 和平台级 Trace。
-- L0 禁止直接持有庭策、机器狗等业务 Skill。
-- L0 禁止直接调用业务 Data Tool 或 External Tool。
+- L0 是固定的 OpenClaw `main` Agent Profile；
+- 仅负责解析 `tenant_id`、`biz_domain`、`task_type`，并 ensure/dispatch L1；
+- 不加载 LEGAL、ROBOT_DOG 等具体业务 Skill；
+- 不直接调用业务 Tool。
 
-### 2.2 L1
+### 2.2 L1 TenantBizAgent
 
-- L1 的逻辑唯一键必须是：
-
-```text
-(tenant_id, biz_domain)
-```
-
-- L1 必须映射为独立的 OpenClaw Agent Profile，而不是只靠 Prompt 模拟租户。
-- 每个 L1 必须拥有独立且不可复用的：
-  - `workspace`
-  - `agentDir`
-  - Session Store
-  - Skill allowlist
-  - Tool allow/deny policy
-  - Memory namespace
-  - Capability Snapshot
-- 禁止两个 L1 共用同一个 `agentDir`。
-- L1 的 OpenClaw `agentId` 必须由规范化的 `tenant_id + biz_domain` 稳定派生，不能把原始租户名直接拼进文件路径。
-- 稳定 ID 推荐：
+- 唯一逻辑键必须是 `(tenant_id, biz_domain)`；
+- 必须映射为独立 OpenClaw Agent Profile，不能只靠 Prompt 标注租户；
+- 每个 L1 必须有独立：
+  - `workspace`；
+  - `agentDir`；
+  - Session namespace/store；
+  - Skill allowlist；
+  - Tool allowlist；
+  - Memory namespace；
+- 两个 L1 禁止共用同一个 `agentDir`；
+- 目录使用稳定 hash ID，禁止把未校验的原始租户字符串直接拼进路径；
+- 推荐逻辑 ID：
 
 ```text
 tb_<sha256(normalized_tenant_id + ":" + normalized_biz_domain)[0:20]>
 ```
 
-### 2.3 L2
+### 2.3 L2 TaskAgent
 
-- L2 必须由 L1 使用 OpenClaw 原生 `sessions_spawn` 创建。
-- 默认使用 `context: "isolated"`，只有明确需要父 Transcript 时才允许 `fork`。
-- L2 必须有独立 Session 和 `task_id`。
-- L2 的能力必须满足：
+- 必须由 L1 使用 OpenClaw 原生 `sessions_spawn` 创建；
+- 默认独立 Session；
+- 必须绑定 `task_id`；
+- 能力必须满足：
 
 ```text
 L2.skills       ⊆ L1.skills
 L2.tools        ⊆ L1.tools
 L2.tool_actions ⊆ L1.tool_actions
 L2.memory_scope ⊆ L1.memory_scope
-L2.data_scope   ⊆ L1.data_scope
 ```
 
-- 禁止任何形式的 capability union、默认补全或“缺少权限时临时开放”。
-- 实际 L2 能力必须按交集计算：
-
-```text
-L2_effective = L1_snapshot ∩ task_template ∩ current_tenant_policy
-```
+- 子 Agent 只能收窄权限，不能自动补全或临时扩大权限；
+- Demo 使用普通集合交集和包含检查即可，不需要设计通用授权语言。
 
 ---
 
-## 3. OpenClaw 基线约束
+## 3. Demo 必需的安全基线
 
-- 只能部署官方 **stable** channel。
-- 禁止使用 `beta`、`dev`、RC、预发布 tag 或未经发布的 `main` 分支特性。
-- 当前文档基线为 `v2026.6.11`；部署前必须重新验证官方最新稳定版。
-- 必须记录：
-  - 安装时间；
-  - OpenClaw version；
-  - Git tag/commit（可获取时）；
-  - npm dist-tag 或 release URL；
-  - Node 版本；
-  - OpenClaw 配置 Schema hash。
-- 远端推荐 Node 24；最低不得低于 OpenClaw 当前稳定版官方要求。
-- 安装后必须运行并保存脱敏结果：
+安全只覆盖完成 Demo 所需的最小边界。
 
-```bash
-openclaw --version
-openclaw doctor
-openclaw gateway status
-openclaw config schema
-```
+### 3.1 租户业务 Scope
 
-- 优先使用插件、配置适配器和独立控制面实现功能。第一版 Demo 禁止 fork 或直接修改 OpenClaw 核心，除非：
-  1. 已用最小复现证明插件/公开接口无法实现；
-  2. 在 `docs/adr/` 新增 ADR；
-  3. 明确列出补丁、风险和升级成本；
-  4. 保留可关闭的 feature flag。
-
----
-
-## 4. 技术栈和工程约束
-
-除非 ADR 明确批准，使用：
-
-- Node.js 24；
-- TypeScript，`strict: true`；
-- pnpm workspace；
-- Fastify 或同等级轻量 HTTP 框架；
-- PostgreSQL 16：权威状态、Capability、TaskState、Trace 索引；
-- Redis 7：分布式锁、心跳、TTL、幂等与短期 Runtime Registry；
-- MinIO：大 Transcript、快照、Artifact；
-- Vitest：单元/集成测试；
-- Testcontainers：本地集成测试（可用时）；
-- Docker Compose：远端 Demo 部署；
-- OpenAPI 3.1 + JSON Schema：接口契约。
-
-工程要求：
-
-- 所有 TypeScript 禁止 `any`，确需使用时必须局部注释原因；
-- 所有外部输入必须 Schema 校验；
-- 所有状态变更必须可重试且幂等；
-- 所有时间使用 UTC；
-- TTL 必须可配置并支持测试时钟，不允许测试真实等待 1 小时/24 小时；
-- 所有关键状态机必须使用显式 enum，禁止用随意字符串；
-- 生产路径禁止内存数据库或进程内 Map 作为唯一真相源；
-- Runtime cache 可以在内存/Redis，但 PostgreSQL 是权威状态源；
-- 关键写操作必须使用事务或 Outbox，不能出现数据库已提交而 Trace 永久缺失的静默失败。
-
----
-
-## 5. Capability 安全模型
-
-### 5.1 Capability Snapshot
-
-L1 创建时必须生成不可变 Snapshot，至少包含：
-
-```text
-snapshot_id
-policy_version
-tenant_id
-biz_domain
-skills + versions
-tools + actions
-memory_scopes
-data_scopes
-sandbox_policy
-model_policy
-lifecycle_policy
-created_at
-```
-
-- Snapshot 用于审计和当前运行实例授权。
-- 新运行实例必须按最新租户策略重新解析 Snapshot。
-- 恢复历史 Session 不得复活已撤销权限。
-
-### 5.2 Capability Token
-
-每个 L2 必须获得短期、签名、不可扩大权限的 Capability Token。
-
-Token 至少绑定：
-
-```text
-token_id
-parent_token_id
-snapshot_id
-runtime_instance_id
-agent_id
-session_id
-task_id
-tenant_id
-biz_domain
-allowed_tools + actions
-memory_scope
-data_scope
-issued_at
-expires_at
-nonce
-```
-
-要求：
-
-- 使用非对称签名或独立 HMAC 密钥；
-- 密钥不能写入仓库；
-- Gateway 必须校验签名、过期、父子关系、租户、业务域、Agent、Session、Task 和 Tool action；
-- 模型提供的 `tenant_id`、`biz_domain`、`user_id` 不能作为可信身份源；
-- 可信上下文必须由控制面签发并由 Gateway 校验；
-- 拒绝必须 fail closed。
-
-### 5.3 双重/三重校验
-
-Tool 隔离不能只依赖 OpenClaw 的 Tool 可见性：
-
-```text
-OpenClaw Agent Tool Policy
-  → Tenant Runtime Plugin Capability 检查
-  → Data/External Gateway Capability Token 检查
-  → 资源归属与操作权限检查
-```
-
-任一层失败，调用都必须被拒绝并写审计。
-
----
-
-## 6. Skill、Tool、Memory 隔离约束
-
-### 6.1 Skill
-
-- L1 必须设置非空的 `agents.list[].skills` 最终 allowlist；需要无 Skill 时使用空数组。
-- 禁止依赖全局默认 Skill 自动合并。
-- 每个租户业务 workspace 只能 materialize 被授权 Skill。
-- 禁止从未审核的 ClawHub 安装任意 Skill。
-- Demo Skill 必须随仓库版本化并带 hash。
-- Skill allowlist 不是 shell 安全边界；有 `exec` 时必须另外 Sandbox。
-
-### 6.2 Tool
-
-- L0、L1、L2 的 Tool policy 必须分别配置。
-- Tool 定义可以全局注册，但对模型可见的 Tool Registry View 必须按当前 L1/L2 Capability 过滤。
-- Tool 调用必须携带不可伪造的运行上下文；禁止从静态插件配置注入固定 `tenantId` 作为生产身份。
-- Gateway 必须对 action 级权限进行校验，不能只校验 tool_name。
-
-### 6.3 Memory
-
-- Memory 查询必须强制携带并过滤：
-
-```text
-tenant_id + biz_domain + visibility + resource_scope
-```
-
-- 禁止先全局向量召回再在应用层过滤。
-- 禁止跨租户 Memory fallback。
-- 禁止配置跨 Agent QMD extraCollections，除非测试专门验证共享且经过 ADR 批准。
-- 每个 L1 的 Memory Wiki/向量 namespace 必须 agent scoped 或显式 tenant-business scoped。
-- 大文本、Transcript 和 Tool 原始结果放 MinIO；数据库仅保存摘要、索引、hash 与 URI。
-
----
-
-## 7. 生命周期语义
-
-“销毁”在本项目中指 **卸载运行态（runtime unload/archive）**，不是删除历史数据。
-
-### L1
-
-默认：
-
-```text
-idle_ttl = 24h
-```
-
-卸载前必须满足：
-
-- 无活动 L2；
-- 无 `RUNNING`、`WAITING_TOOL`、`PERSISTING` 任务；
-- 成功获取租户业务 Agent 分布式锁；
-- 成功完成最终 checkpoint。
-
-### L2
-
-默认：
-
-```text
-idle_ttl = 1h
-```
-
-- 任务完成后立即 checkpoint；
-- 等待用户输入时应尽快冻结，不应占用内存等待；
-- OpenClaw 原生 Sub-agent auto-archive 只能作为辅助；由于其 timer 在 Gateway 重启后可能丢失，数据库驱动 Reaper 是必需项。
-
-### 必须持久化
-
-卸载前至少持久化：
-
-```text
-Session Summary
-Transcript URI + hash
-Memory delta
-Trace events
-TaskState/current_step
-Tool call records
-Intermediate artifact references
-Capability Snapshot reference
-last_active_at
-```
-
-### 恢复
-
-- `logical_agent_id` 稳定；
-- `runtime_instance_id` 每次重建都必须变化；
-- 默认新建 Session，不把完整历史 Transcript 无限制重新注入模型；
-- 恢复仅注入 Session Summary、未完成 TaskState、必要 Memory 和 Artifact 引用；
-- 必须记录 `restored_from_runtime_instance_id`。
-
----
-
-## 8. 数据模型不可缺失字段
-
-所有 Agent、Session、Task、Memory、Trace、Tool Call 表或事件必须可关联：
+以下数据必须始终关联：
 
 ```text
 tenant_id
 biz_domain
 logical_agent_id
 runtime_instance_id
-agent_id
 session_id
 task_id
-trace_id
-capability_snapshot_id
-created_at
 ```
 
-非适用字段可为空，但不能从模型中删除。
+所有 Memory、Task、Trace 和 Demo 业务资源查询必须在 SQL/Repository 层带 `tenant_id + biz_domain`，不能先全量查询再在应用层过滤。
 
-所有租户业务唯一约束必须以 `tenant_id + biz_domain` 为前缀。任何只以 `task_id`、`session_id` 或 `resource_id` 做查询的 DAO 都必须被测试阻止。
+### 3.2 Skill 与 Tool 可见性
 
----
+- L1 使用显式 Skill/Tool allowlist；
+- L2 的 allowlist 由 L1 allowlist 与任务模板取交集；
+- LEGAL Agent 看不到 ROBOT_DOG Skill/Tool，反之亦然；
+- Prompt 中写出未授权 Skill 或 Tool 名称不能让它出现。
 
-## 9. API 约束
+### 3.3 可信执行上下文
 
-必须实现并文档化：
+Demo 不实现 JWT/PASETO Capability Token。
+
+控制面创建一个服务端保存的 `execution_context`，至少包含：
 
 ```text
-POST /api/v1/tasks
-GET  /api/v1/tasks/:taskId
-GET  /api/v1/agents/:logicalAgentId
-POST /api/v1/admin/agents/:logicalAgentId/checkpoint
-POST /api/v1/admin/agents/:logicalAgentId/unload
-POST /api/v1/admin/reaper/run-once
-POST /api/v1/admin/test-clock/advance   # 仅 test/demo profile
-GET  /health/live
-GET  /health/ready
-GET  /metrics
+execution_context_id
+tenant_id
+biz_domain
+logical_agent_id
+runtime_instance_id
+session_id
+task_id
+allowed_skills
+allowed_tools + actions
+resource_scope
+expires_at
 ```
 
-- 所有请求必须有 `request_id`；
-- 返回必须有 `trace_id`；
-- 写接口必须支持 `idempotency_key`；
-- Admin 和 test-clock 接口默认关闭，不得暴露公网；
-- OpenAPI 文件必须进入版本控制并通过兼容性测试。
+规则：
 
----
+- `execution_context_id` 使用随机 UUID；
+- OpenClaw Plugin/Adapter 只传 `execution_context_id` 给 Gateway Mock；
+- Gateway Mock 必须从控制面或 PostgreSQL读取权威上下文；
+- Gateway 不得相信模型或请求 body 自报的 tenant、biz、tool/action 权限；
+- Gateway 校验 tool/action 和资源归属后再执行；
+- 未知、过期或 scope 不匹配的 context 默认拒绝。
 
-## 10. 云服务器和 config.txt 约束
+这足以验证 Demo 隔离，不需要签名 Token、nonce、revocation、PKI 或重放协议。
 
-仓库是公开的。
+### 3.4 Memory 隔离
 
-- `config.txt` 是本地只读机密文件，禁止提交、复制到 Artifact、写入日志或回显。
-- Codex 可以读取 `config.txt` 以建立 SSH 和部署，但必须对所有输出脱敏。
-- 如果 `config.txt` 不存在或字段缺失，停止部署并给出缺失字段，不得猜测。
-- 禁止修改或删除用户提供的 `config.txt`。
-- 禁止在命令行参数中直接传密码；优先 SSH key、环境变量文件或 stdin。
-- 禁止把私钥内容写入远端工程目录。
-- 所有远端操作限制在配置指定的 `REMOTE_WORKDIR`；禁止清理未知目录、重装整机、修改防火墙全局策略或删除非本项目容器。
-- 任何 `rm -rf` 必须经过路径规范化和 allowlist 检查。
-- Gateway 不得裸露公网；默认仅监听 loopback 或 Docker 私网，通过 SSH tunnel 访问。
-- 对外 Demo API 必须有认证；Admin API 必须仅 loopback/私网。
-
----
-
-## 11. 开发阶段与强制 Gate
-
-按 `CODEX_TASK.md` 顺序开发。每个阶段完成前必须：
-
-1. 代码、测试和文档同步提交；
-2. 所有新增接口有 Schema；
-3. lint、typecheck、unit test 通过；
-4. 生成阶段报告到 `artifacts/reports/`（目录不提交大日志，只提交脱敏摘要）；
-5. 不得用跳过测试、硬编码成功响应或伪造日志通过 Gate。
-
-禁止在核心隔离测试未完成前宣称 Demo 完成。
-
----
-
-## 12. 测试底线
-
-至少必须覆盖：
-
-- Unit：ID 派生、Capability 交集、Token 验签、TTL、状态机；
-- Contract：OpenAPI/JSON Schema；
-- Integration：PostgreSQL、Redis、MinIO、Gateway Mock；
-- OpenClaw E2E：L0→L1→L2；
-- Negative isolation：跨租户、跨业务、跨资源、越权 Tool action；
-- Lifecycle：L1 24h、L2 1h，使用 fake clock；
-- Recovery：Control Plane 重启、OpenClaw 重启、Reaper 重启；
-- Concurrency：同一 L1 并发 ensure 只创建一个逻辑实例；
-- Idempotency：同一任务重复提交不重复执行；
-- Failure injection：持久化失败时禁止卸载、MinIO 不可用、Redis 锁过期、Gateway 超时；
-- Secret scan：仓库和测试 Artifact 不得包含 config.txt 内容。
-
-任何安全测试必须同时验证：
+每条 Memory 至少保存：
 
 ```text
-HTTP/Tool 返回拒绝
-业务副作用未发生
-审计事件已写入
-Trace 可关联
+tenant_id
+biz_domain
+logical_agent_id
+session_id
+task_id
+memory_type
+content
 ```
 
+查询必须带 `tenant_id + biz_domain`。第一版 Demo 使用 PostgreSQL 文本查询即可，不要求向量数据库。
+
+### 3.5 文件路径
+
+- workspace/agentDir/session 路径只能从稳定逻辑 ID 派生；
+- 路径必须规范化并确认仍在项目运行根目录内；
+- 拒绝 `..`、绝对路径和 symlink escape；
+- 不允许两个租户业务共享写目录。
+
+### 3.6 基础机密保护
+
+- `config.txt`、`.env`、SSH 私钥、模型/API Key 禁止提交 Git；
+- 日志不得输出密码、Token、私钥或完整连接串；
+- OpenClaw、PostgreSQL 和 Admin/Test API 默认只监听 loopback 或 Docker 私网；
+- 远端操作只能位于 `REMOTE_WORKDIR` 和本项目容器/目录内。
+
 ---
 
-## 13. 完成定义
+## 4. 明确不做的安全与平台能力
 
-只有同时满足以下条件才能标记完成：
+第一版 Demo **禁止主动扩展**以下内容，除非它们真实阻塞三层 Agent 验证并先写简短 ADR：
 
-- `docs/acceptance-checklist.md` 全部打勾并附证据路径；
-- 一键远端部署脚本可在干净服务器重复执行；
-- 一键验证脚本退出码为 0；
-- 测试报告包含成功与故意失败的隔离案例；
-- 远端进程重启后恢复测试通过；
-- 实际 OpenClaw 版本为稳定版；
-- 无 beta/dev 依赖；
-- 无机密泄露；
-- 无跨租户数据、Memory、Skill、Tool 可见性；
-- 未修改 OpenClaw 核心，或已存在经批准 ADR 和可重放补丁。
+- JWT/JWS/PASETO Capability Token；
+- nonce、jti、Token revoke、Token rotation；
+- PKI、mTLS、零信任网络；
+- OAuth、完整 RBAC、组织级 IAM；
+- Kafka、事件总线、Outbox；
+- Redis 分布式锁、集群心跳、多节点 HA；
+- MinIO 对象存储；
+- 向量数据库与语义 Memory；
+- 审计 hash chain、不可抵赖系统；
+- Kubernetes、多区域、灾备；
+- 生产计费、限额和配额系统；
+- 全面 SSRF/WAF/供应链安全平台；
+- 大规模性能压测。
+
+Demo 可以记录简单 `ALLOW/DENY` Trace，但不建设生产审计平台。
 
 ---
 
-## 14. 变更本约束
+## 5. 最小技术栈
 
-任何弱化本文件中租户隔离、权限交集、持久化或测试要求的修改，都必须由仓库所有者明确批准。Codex 禁止自行删除、绕过或模糊化这些约束。
+除非实现中确认 OpenClaw stable 有硬性要求，使用：
+
+- Node.js 24；
+- TypeScript `strict: true`；
+- pnpm workspace；
+- Fastify；
+- PostgreSQL 16；
+- Vitest；
+- Docker Compose；
+- OpenAPI/JSON Schema 只覆盖对外 API 和核心运行上下文。
+
+允许：
+
+- 进程内 `Map` 作为可重建 Runtime cache；
+- PostgreSQL 作为权威状态源；
+- 本地持久化 volume 保存 Transcript/Snapshot 文件。
+
+不要求 Redis、MinIO、Testcontainers、消息队列或分布式协调。
+
+工程要求：
+
+- 外部 HTTP 输入必须校验；
+- 时间统一使用 UTC；
+- TTL 可通过环境变量配置；
+- 生命周期测试使用 fake clock，禁止真实等待 1 小时/24 小时；
+- 状态机使用显式 enum；
+- 关键错误不能吞掉后返回 success；
+- 不得伪造测试输出。
+
+---
+
+## 6. 生命周期
+
+“销毁”指卸载运行态，不删除历史数据。
+
+默认：
+
+```text
+L1 idle TTL = 86400 秒（24h）
+L2 idle TTL = 3600 秒（1h）
+```
+
+### L2 卸载前
+
+至少保存：
+
+- TaskState；
+- Session Summary；
+- Memory；
+- Trace；
+- 最终或中间结果。
+
+### L1 卸载前
+
+必须：
+
+- 没有运行中的 L2；
+- 保存 Session Summary、Memory、Trace 和当前能力配置摘要；
+- 持久化成功后再从 Runtime Registry/OpenClaw 活跃配置中卸载。
+
+持久化失败时，不得把状态标记为 `UNLOADED`。
+
+恢复时：
+
+- `logical_agent_id` 保持不变；
+- `runtime_instance_id` 必须变化；
+- 默认创建新 Session；
+- 恢复摘要、Memory、Trace 索引和未完成 TaskState；
+- 不自动把完整历史 Transcript 注入模型。
+
+---
+
+## 7. OpenClaw 基线
+
+- 只使用官方 stable channel；
+- 禁止 beta、alpha、RC、dev 和未发布 `main` 特性；
+- 部署前查询并记录实际稳定版本；
+- 优先使用官方配置、插件、CLI 或 RPC；
+- 第一版不修改 OpenClaw 核心源码；
+- 如果 stable 版不支持动态 Profile，可采用结构化配置 reload、有限模板 Profile 或受控的多实例方式，选择最小可运行方案并记录限制。
+
+---
+
+## 8. Demo 数据与最小测试
+
+至少准备：
+
+```text
+tenant_A + LEGAL
+tenant_A + ROBOT_DOG
+tenant_B + LEGAL
+```
+
+两个 LEGAL 租户都创建 `case_001`。
+
+必须自动验证：
+
+1. 同 scope L1 创建与复用；
+2. 不同 scope 的 Profile、workspace、Session 隔离；
+3. Skill 隔离；
+4. Tool/action 隔离；
+5. Memory 隔离；
+6. L2 权限子集；
+7. L2 TTL 卸载与恢复数据存在；
+8. L1 TTL 卸载与重新创建；
+9. `logical_agent_id` 稳定、`runtime_instance_id` 变化；
+10. 至少一条真实 OpenClaw 三层链路成功。
+
+负向 Tool 测试至少验证：
+
+```text
+调用被拒绝
+目标业务数据没有变化
+Trace 记录 DENY 原因
+```
+
+不要求完整 Audit 系统或密码学证明。
+
+---
+
+## 9. API 与部署底线
+
+至少实现：
+
+```text
+POST /api/tasks
+GET  /api/tasks/:taskId
+GET  /api/agents
+GET  /api/agents/:logicalAgentId
+GET  /api/agents/:logicalAgentId/memories
+POST /api/admin/reaper/run
+POST /api/admin/clock/advance   # 仅 demo/test
+GET  /health
+```
+
+- Admin/Test 接口只绑定 loopback/私网；
+- `config.txt` 不存在时只完成本地开发并报告缺失字段；
+- 部署脚本应可重复运行，只操作本项目资源；
+- 最终提供 `pnpm demo:deploy` 和 `pnpm demo:verify`。
+
+---
+
+## 10. 工作方式与完成定义
+
+按 `CODEX_TASK.md` 阶段执行。每个阶段：
+
+1. 给出简短计划；
+2. 实际修改代码；
+3. 运行 lint、typecheck 和相关测试；
+4. 修复失败；
+5. 提交清晰 commit；
+6. 更新 Issue #1。
+
+Demo 完成条件：
+
+- 三层 OpenClaw 链路真实运行；
+- 三个 tenant/biz scope 的 Skill、Tool、Memory、Session 隔离测试通过；
+- L1/L2 生命周期和恢复测试通过；
+- 云端部署可重复执行；
+- 没有提交机密；
+- 文档清楚区分 Demo 方案和未来生产化建议。
+
+任何新增复杂安全机制都必须先回答：**它是否直接用于证明上述 Demo 目标？** 如果不是，留到“生产化建议”，不要实现。
