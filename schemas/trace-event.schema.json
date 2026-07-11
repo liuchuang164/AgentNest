@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentnest.example/schemas/trace-event.schema.json",
-  "title": "AgentNest Trace Event",
+  "title": "AgentNest Demo Trace Event",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -25,7 +25,7 @@
     "agent_id": { "type": ["string", "null"] },
     "session_id": { "type": ["string", "null"] },
     "task_id": { "type": ["string", "null"] },
-    "capability_snapshot_id": { "type": ["string", "null"] },
+    "execution_context_id": { "type": ["string", "null"], "format": "uuid" },
     "event_type": {
       "enum": [
         "REQUEST_ACCEPTED",
@@ -36,6 +36,7 @@
         "L2_SPAWN_REQUESTED",
         "L2_SPAWNED",
         "SKILL_SELECTED",
+        "EXECUTION_CONTEXT_CREATED",
         "TOOL_CALL_REQUESTED",
         "TOOL_CALL_ALLOWED",
         "TOOL_CALL_DENIED",
@@ -45,27 +46,22 @@
         "CHECKPOINT_STARTED",
         "CHECKPOINT_COMPLETED",
         "CHECKPOINT_FAILED",
-        "L2_ARCHIVED",
+        "L2_UNLOADED",
         "L1_UNLOAD_STARTED",
         "L1_UNLOADED",
         "RESTORE_STARTED",
         "RESTORE_COMPLETED",
-        "POLICY_CHANGED",
-        "TOKEN_ISSUED",
-        "TOKEN_REJECTED"
+        "CAPABILITY_PROFILE_CHANGED"
       ]
     },
+    "decision": {
+      "type": ["string", "null"],
+      "enum": ["ALLOW", "DENY", null]
+    },
+    "reason": { "type": ["string", "null"] },
     "payload": {
       "type": "object",
       "additionalProperties": true
-    },
-    "previous_hash": {
-      "type": ["string", "null"],
-      "pattern": "^sha256:[a-f0-9]{64}$"
-    },
-    "event_hash": {
-      "type": ["string", "null"],
-      "pattern": "^sha256:[a-f0-9]{64}$"
     },
     "created_at": { "type": "string", "format": "date-time" }
   }
