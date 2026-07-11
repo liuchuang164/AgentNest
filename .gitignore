@@ -1,0 +1,52 @@
+# Local deployment secrets
+config.txt
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# OpenClaw local state
+.openclaw/
+openclaw-state/
+runtime/
+workspaces/
+agent-state/
+
+# Dependencies and builds
+node_modules/
+dist/
+build/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Test and deployment artifacts
+artifacts/raw/
+artifacts/logs/
+artifacts/secrets/
+artifacts/*.tar.gz
+artifacts/*.zip
+*.log
+
+# Python helpers
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary config
+openclaw.json.local
+openclaw.json.rejected.*
+config.generated.*
