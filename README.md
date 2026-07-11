@@ -154,18 +154,40 @@ OpenClaw stable
 - [`docs/security-isolation.md`](docs/security-isolation.md)：Demo 最小隔离基线
 - [`docs/lifecycle-persistence.md`](docs/lifecycle-persistence.md)：生命周期与恢复
 - [`docs/implementation-plan.md`](docs/implementation-plan.md)：代码模块建议
-- [`docs/deployment-runbook.md`](docs/deployment-runbook.md)：云端部署
+- [`docs/deployment-runbook.md`](docs/deployment-runbook.md)：云端部署，支持 SSH key 或用户名密码
 - [`docs/validation-test-plan.md`](docs/validation-test-plan.md)：测试方案
 - [`docs/acceptance-checklist.md`](docs/acceptance-checklist.md)：验收清单
 - [`docs/codex-kickoff-prompt.md`](docs/codex-kickoff-prompt.md)：可直接交给 Codex 的提示词
+- [`docs/remote-preflight-recovery.md`](docs/remote-preflight-recovery.md)：Codex 跑偏或远端 preflight 卡住时的收口指令
 
 ## 本地机密配置
 
 ```bash
 cp config.example.txt config.txt
+chmod 600 config.txt
 ```
 
 `config.txt` 和 `.env` 已被 Git 忽略。脚本、日志、Issue 和测试报告不得输出密码、私钥、模型/API Key 或完整连接串。
+
+支持两种 SSH 登录方式：
+
+```text
+SSH_AUTH_MODE=key
+SSH_PRIVATE_KEY_PATH=/path/to/key
+```
+
+或：
+
+```text
+SSH_AUTH_MODE=password
+SSH_PASSWORD=<server password>
+```
+
+用户名密码模式是本 Demo 明确支持的方式。部署脚本应通过环境变量、stdin、`sshpass -e` 或 Node SSH library API 传递密码，不得因为缺少私钥而阻塞，也不得把密码放进命令行参数或日志。
+
+## Codex 已在旧版安全方案上跑偏时
+
+不要继续旧版 signed-token Phase 2。先保存旧工作到 backup 分支，拉取最新 `origin/main`，再按 [`docs/remote-preflight-recovery.md`](docs/remote-preflight-recovery.md) 收口。旧代码只迁移通用工程骨架，不整批迁移 Capability Token、revocation、replay、Redis、MinIO 或 Outbox 实现。
 
 ## 最终命令目标
 
