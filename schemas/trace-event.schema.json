@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentnest.example/schemas/trace-event.schema.json",
+  "title": "AgentNest Trace Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "trace_id",
+    "tenant_id",
+    "biz_domain",
+    "event_type",
+    "payload",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "event_id": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "biz_domain": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+    "logical_agent_id": { "type": ["string", "null"] },
+    "runtime_instance_id": { "type": ["string", "null"] },
+    "agent_id": { "type": ["string", "null"] },
+    "session_id": { "type": ["string", "null"] },
+    "task_id": { "type": ["string", "null"] },
+    "capability_snapshot_id": { "type": ["string", "null"] },
+    "event_type": {
+      "enum": [
+        "REQUEST_ACCEPTED",
+        "L1_ENSURE_STARTED",
+        "L1_PROFILE_CREATED",
+        "L1_PROFILE_REUSED",
+        "L1_RESTORED",
+        "L2_SPAWN_REQUESTED",
+        "L2_SPAWNED",
+        "SKILL_SELECTED",
+        "TOOL_CALL_REQUESTED",
+        "TOOL_CALL_ALLOWED",
+        "TOOL_CALL_DENIED",
+        "TOOL_CALL_COMPLETED",
+        "MEMORY_READ",
+        "MEMORY_WRITE",
+        "CHECKPOINT_STARTED",
+        "CHECKPOINT_COMPLETED",
+        "CHECKPOINT_FAILED",
+        "L2_ARCHIVED",
+        "L1_UNLOAD_STARTED",
+        "L1_UNLOADED",
+        "RESTORE_STARTED",
+        "RESTORE_COMPLETED",
+        "POLICY_CHANGED",
+        "TOKEN_ISSUED",
+        "TOKEN_REJECTED"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "previous_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "event_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}
