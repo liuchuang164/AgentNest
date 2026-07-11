@@ -7,47 +7,38 @@ SSH_PORT=22
 SSH_USER=ubuntu
 # Prefer an existing local private-key path. Never paste private-key content here.
 SSH_PRIVATE_KEY_PATH=~/.ssh/id_ed25519
-# Optional bastion. Leave empty when unused.
 SSH_BASTION=
 
-# Project isolation on the remote host
+# Project directory on the remote host
 REMOTE_WORKDIR=/opt/agentnest-demo
-REMOTE_PROJECT_USER=agentnest
 REMOTE_TIMEZONE=UTC
 
-# OpenClaw channel/version policy
+# OpenClaw stable version policy
 OPENCLAW_CHANNEL=stable
-# Leave AUTO to resolve the newest official stable release at deployment time.
-# Current documentation baseline as of 2026-07-11: 2026.6.11
+# AUTO resolves the newest official stable release at deployment time.
 OPENCLAW_VERSION=AUTO
 OPENCLAW_GATEWAY_PORT=18789
 OPENCLAW_BIND_HOST=127.0.0.1
 
-# Model provider. Use one supported provider and keep the real key only in config.txt.
+# Model provider supported by the selected OpenClaw stable version
 MODEL_PROVIDER=openai
 MODEL_NAME=
 MODEL_API_KEY=
 
-# Demo service ports. Bind admin services to loopback/private network only.
+# Demo services
 CONTROL_PLANE_PORT=18080
 DATA_GATEWAY_MOCK_PORT=18081
 EXTERNAL_GATEWAY_MOCK_PORT=18082
-MINIO_API_PORT=19000
-MINIO_CONSOLE_PORT=19001
 POSTGRES_PORT=15432
-REDIS_PORT=16379
-
-# Local-only application secrets. Generate strong random values.
-CONTROL_PLANE_ADMIN_TOKEN=
-CAPABILITY_TOKEN_SIGNING_SECRET=
 POSTGRES_PASSWORD=
-MINIO_ROOT_USER=agentnest
-MINIO_ROOT_PASSWORD=
 
-# Demo lifecycle defaults; tests override them with a fake clock.
+# Optional static token for the external Demo API.
+# Leave empty when the API is only reached through an SSH tunnel.
+DEMO_API_TOKEN=
+
+# Lifecycle defaults. Tests use a fake clock.
 L1_IDLE_TTL_SECONDS=86400
 L2_IDLE_TTL_SECONDS=3600
 
-# Optional public access. Recommended false; use SSH tunnel for verification.
+# Keep false for the default SSH-tunnel deployment.
 EXPOSE_DEMO_API=false
-DEMO_API_ALLOWED_CIDRS=
