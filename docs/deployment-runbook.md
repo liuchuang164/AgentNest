@@ -2,7 +2,7 @@
 
 ## 1. 范围
 
-使用本地 `config.txt`，在一台干净云服务器上部署：
+使用本地 `config.txt`，在一台干净云服务器上部署并验证：
 
 ```text
 OpenClaw 官方最新稳定版
@@ -12,18 +12,19 @@ External Gateway Mock
 PostgreSQL
 ```
 
-第一版不部署 Redis、MinIO、Kafka、Kubernetes 或生产级密钥管理平台。
+第一版不部署 Redis、MinIO、Kafka、Kubernetes、Capability Token 服务或生产级密钥管理平台。
 
 ---
 
-## 2. 原则
+## 2. 部署原则
 
-1. 可重复：同一服务器重复执行不会创建冲突资源；
-2. 最小暴露：默认 loopback 或 Docker 私网；
-3. 不破坏：只操作 `REMOTE_WORKDIR` 和本项目资源；
-4. 不泄密：不回显 `config.txt`、密码、私钥或模型 Key；
-5. Stable only：禁止 OpenClaw beta/dev；
-6. 可验证：部署后自动运行三层链路、隔离、生命周期和恢复测试。
+1. **可重复**：同一服务器重复执行不会创建冲突资源；
+2. **不破坏**：只操作 `REMOTE_WORKDIR` 和本项目容器；
+3. **不泄密**：不回显 `config.txt`、SSH 密码、私钥、模型 Key 或数据库密码；
+4. **最小暴露**：默认使用 loopback 或 Docker 私网；
+5. **Stable only**：只安装 OpenClaw 官方稳定版；
+6. **Demo 优先**：不要为部署增加 PKI、堡垒机、企业 IAM、复杂发布平台或其他非必要安全系统；
+7. **可验证**：部署后自动运行三层链路、隔离、生命周期和恢复测试。
 
 ---
 
@@ -31,13 +32,13 @@ PostgreSQL
 
 格式参考 `config.example.txt`。
 
-最低字段：
+### 3.1 基础字段
 
 ```text
 SSH_HOST
 SSH_PORT
 SSH_USER
-SSH_PRIVATE_KEY_PATH
+SSH_AUTH_MODE=key|password
 REMOTE_WORKDIR
 OPENCLAW_CHANNEL=stable
 OPENCLAW_VERSION=AUTO
@@ -49,7 +50,36 @@ L1_IDLE_TTL_SECONDS
 L2_IDLE_TTL_SECONDS
 ```
 
-可选：
+### 3.2 SSH 认证二选一
+
+Key 模式：
+
+```text
+SSH_AUTH_MODE=key
+SSH_PRIVATE_KEY_PATH=/path/to/key
+SSH_PASSWORD=
+```
+
+Password 模式：
+
+```text
+SSH_AUTH_MODE=password
+SSH_PRIVATE_KEY_PATH=
+SSH_PASSWORD=<server password>
+```
+
+用户名密码登录是本 Demo 明确支持的方式。不能因为没有 SSH 私钥而阻塞部署。
+
+Password 模式实现要求保持简单：
+
+- 可以使用 `sshpass -e`，通过临时环境变量 `SSHPASS` 传递；或
+- 使用 Node SSH library 的 password 字段；
+- 不得把密码放进可见的命令行参数；
+- 不得在 stdout、stderr、日志、Issue 或报告中打印密码；
+- 子进程结束后清理临时环境变量；
+- 不建设 PKI、Vault、堡垒机或密码轮换平台。
+
+### 3.3 可选字段
 
 ```text
 DEMO_API_TOKEN
@@ -57,40 +87,75 @@ CONTROL_PLANE_PORT
 DATA_GATEWAY_MOCK_PORT
 EXTERNAL_GATEWAY_MOCK_PORT
 POSTGRES_PORT
+SSH_BASTION
 ```
 
-读取要求：
+### 3.4 文件规则
 
-- `config.txt` 已 Git ignore；
+- `config.txt` 必须被 Git ignore；
+- 文件权限应为 `0600`；
 - 不直接 `source config.txt`；
 - 使用简单 KEY=VALUE parser；
-- 错误只显示缺失字段名，不显示值；
-- 不把内容复制进报告或远端 release 目录。
+- parser 只读取已知字段；
+- 错误只显示字段名，不显示值；
+- 不把配置内容复制进报告或远端源码目录。
+
+当权限已经是 `0600` 且认证字段完整时，应继续执行 preflight，不要反复增加新的安全前置条件。
 
 ---
 
 ## 4. 只读 Preflight
 
-部署前运行：
+运行：
 
 ```bash
 pnpm demo:preflight
 ```
 
+Preflight 只允许读取，不能安装、删除或修改远端服务。
+
 检查：
 
-- `config.txt` 存在；
-- SSH key 路径存在；
-- SSH 可连接；
-- 远端 OS/arch；
-- CPU、内存、磁盘；
-- Node/Docker/Git 可用性；
-- 目标端口占用；
-- `REMOTE_WORKDIR` 安全且不是 `/`、`/home`、`/root` 等宽目录；
-- 不存在同名但非本项目管理的容器或目录；
-- OpenClaw stable 版本解析结果。
+```text
+config.txt 存在且权限为 0600
+所选 SSH 认证方式字段完整
+SSH 可连接
+远端 OS / architecture
+CPU / memory / free disk
+Node / npm / pnpm / Docker / Git 可用性
+目标端口占用
+REMOTE_WORKDIR 是否存在、是否可写
+REMOTE_WORKDIR 不是 /、/home、/root 等宽目录
+是否存在同名但非本项目管理的容器
+OpenClaw 最新 stable 版本解析结果
+```
 
-Preflight 不安装、不删除、不修改服务。
+Password 模式示意：
+
+```bash
+SSHPASS="$SSH_PASSWORD" sshpass -e ssh \
+  -o StrictHostKeyChecking=accept-new \
+  -p "$SSH_PORT" \
+  "$SSH_USER@$SSH_HOST" \
+  'uname -a'
+```
+
+示意命令不能打印 `SSHPASS` 或 `SSH_PASSWORD`。实现也可以使用 Node SSH library。
+
+Preflight 报告只包含：
+
+```text
+连接成功/失败
+OS / arch
+CPU / memory / disk
+工具版本
+端口状态
+REMOTE_WORKDIR 状态
+OpenClaw stable 解析结果
+真正的部署阻塞项
+```
+
+不包含任何密码、Key 内容、模型 Key 或完整连接串。
 
 建议 Demo 资源：
 
@@ -101,7 +166,7 @@ Preflight 不安装、不删除、不修改服务。
 Ubuntu 22.04/24.04 或兼容 Linux
 ```
 
-资源不足时如实报告。
+资源不足时如实报告，但不要顺手设计集群或高可用方案。
 
 ---
 
@@ -113,9 +178,9 @@ Ubuntu 22.04/24.04 或兼容 Linux
 scripts/deploy/resolve-openclaw-stable.sh
 ```
 
-算法：
+流程：
 
-1. 查询官方 GitHub Release 或 npm `latest`；
+1. 查询 OpenClaw 官方 GitHub Release 或 npm `latest`；
 2. 排除 beta、alpha、rc、dev 和 prerelease；
 3. 记录最终版本和解析来源；
 4. 精确安装：
@@ -132,15 +197,16 @@ openclaw doctor
 openclaw gateway status
 ```
 
-如果官方 stable 的动态 Profile API 与文档假设不同，应选择最小可运行方案并记录限制，不得改用 beta。
+如果 stable 版动态 Profile API 与文档假设不同，选择最小可运行方案并记录限制，不得切换 beta，也不得先修改 OpenClaw 核心源码。
 
 ---
 
 ## 6. 远端目录
 
+所有项目内容限制在：
+
 ```text
 ${REMOTE_WORKDIR}/
-  current/
   source/
   config/
   openclaw-state/
@@ -152,12 +218,13 @@ ${REMOTE_WORKDIR}/
 要求：
 
 - 只操作该根目录；
-- 机密文件权限 `0600`；
-- runtime/openclaw-state 不允许无关系统用户读取；
-- 不把私钥复制到远端；
+- 远端环境文件权限 `0600`；
+- 不复制本地 SSH 私钥；
+- 不把本地 `config.txt` 原样上传；
+- 只生成服务需要的最小远端环境文件；
 - 部署日志不打印完整连接串。
 
-不要求 release symlink、蓝绿部署或自动回滚平台。保留前一次可用配置备份即可。
+不要求 release symlink、蓝绿部署或自动回滚平台。保留一份可用配置备份即可。
 
 ---
 
@@ -172,21 +239,16 @@ data-gateway-mock
 external-gateway-mock
 ```
 
-OpenClaw 可以：
+OpenClaw 可以使用官方推荐 daemon，也可以作为受控容器运行。选择与当前 stable 最兼容、实现最少的方式，并记录实际选择。
 
-- 使用官方推荐宿主 daemon；或
-- 作为受控容器运行。
-
-选择兼容当前 stable 的最小方案，并在 README 记录。
-
-服务网络：
+默认网络：
 
 ```text
 PostgreSQL: Docker private network
 Data/External Gateway Mock: Docker private network
-Control Plane: 127.0.0.1 或 private network
+Control Plane: 127.0.0.1 或 Docker private network
 OpenClaw Gateway: 127.0.0.1
-Admin/Test API: 127.0.0.1 或 private network
+Admin/Test API: 127.0.0.1 或 Docker private network
 ```
 
 外部验证优先使用 SSH tunnel。
@@ -196,28 +258,29 @@ Admin/Test API: 127.0.0.1 或 private network
 ## 8. 部署顺序
 
 ```text
-1. 创建 REMOTE_WORKDIR 子目录
-2. 上传/拉取 AgentNest source
-3. 安装 Node/pnpm/Docker（缺失时）
-4. 解析并安装 OpenClaw stable
-5. 启动 PostgreSQL
-6. 执行 migration 和 Demo seed
-7. 启动 Gateway Mock
-8. 启动 Control Plane
-9. 安装/启用 Tenant Runtime Plugin
-10. 创建 Main Agent 配置
-11. 启动 OpenClaw Gateway
-12. 运行 health/smoke test
-13. 运行 demo:verify
+1. 完成只读 preflight
+2. 创建 REMOTE_WORKDIR 子目录
+3. 上传或拉取 AgentNest source
+4. 安装缺失的 Node/pnpm/Docker/Git
+5. 解析并安装 OpenClaw stable
+6. 启动 PostgreSQL
+7. 执行 migration 和 Demo seed
+8. 启动 Data/External Gateway Mock
+9. 启动 Control Plane
+10. 安装/启用 Tenant Runtime Plugin
+11. 创建 Main Agent 配置
+12. 启动 OpenClaw Gateway
+13. 运行 health/smoke test
+14. 运行 pnpm demo:verify
 ```
 
-脚本必须可重复运行。
+部署脚本必须可重复运行。第二次运行不得创建重复数据库记录、重复容器或重复 Agent 配置。
 
 ---
 
 ## 9. OpenClaw 配置
 
-配置必须以实际 stable Schema 为准。
+配置以实际 stable Schema 为准。
 
 Demo 至少包含：
 
@@ -225,11 +288,12 @@ Demo 至少包含：
 main Profile
 Tenant Runtime Plugin
 L2 sessions_spawn 配置
-per-agent workspace/agentDir
-per-agent Skill/Tool allowlist
+per-agent workspace / agentDir
+per-agent Skill allowlist
+per-agent Tool allowlist
 ```
 
-结构化更新配置，禁止 sed/regex 直接替换 JSON。
+结构化更新配置，禁止用 sed/regex 直接替换 JSON。
 
 如果动态 L1 Profile 热加载不可用，可选择：
 
@@ -258,7 +322,7 @@ pnpm demo:verify
 - 不吞错误；
 - 日志脱敏；
 - `demo:deploy` 可重复执行；
-- 可选支持 `--dry-run`，但不要求复杂发布系统。
+- 不要求复杂发布系统。
 
 ---
 
@@ -267,7 +331,7 @@ pnpm demo:verify
 必须验证：
 
 1. OpenClaw stable version；
-2. Control Plane/PostgreSQL/OpenClaw 健康；
+2. Control Plane、PostgreSQL、OpenClaw 健康；
 3. 三个 L1 scope 创建；
 4. LEGAL 和 ROBOT_DOG 三层 E2E；
 5. Skill 隔离；
@@ -308,9 +372,9 @@ Mock Tool 测试列表
 
 ```text
 config.txt 原文
-密码
-SSH 私钥
+SSH 密码或私钥
 模型/API Key
+数据库密码
 完整连接串
 未脱敏 Session Transcript
 ```
@@ -326,7 +390,7 @@ scripts/deploy/destroy-project-only.sh --dry-run
 scripts/deploy/destroy-project-only.sh --confirm-agentnest
 ```
 
-只能停止/删除：
+只能停止或删除：
 
 - 标记为 AgentNest 的容器和网络；
 - `REMOTE_WORKDIR` 下项目文件；
@@ -341,11 +405,12 @@ scripts/deploy/destroy-project-only.sh --confirm-agentnest
 云端 Demo 不要求：
 
 ```text
+SSH PKI / Vault / 堡垒机平台
 Redis
 MinIO
-Kafka/Outbox
+Kafka / Outbox
 Capability signing service
-mTLS/PKI
+mTLS / 零信任网络
 Kubernetes
 蓝绿发布平台
 多节点 HA
