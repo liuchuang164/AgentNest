@@ -5,8 +5,15 @@
 SSH_HOST=203.0.113.10
 SSH_PORT=22
 SSH_USER=ubuntu
-# Prefer an existing local private-key path. Never paste private-key content here.
-SSH_PRIVATE_KEY_PATH=~/.ssh/id_ed25519
+
+# SSH authentication mode: key or password.
+# For key mode, set SSH_PRIVATE_KEY_PATH and leave SSH_PASSWORD empty.
+# For password mode, set SSH_PASSWORD and leave SSH_PRIVATE_KEY_PATH empty.
+# Password mode is acceptable for this single-server Demo; scripts must pass it via
+# environment/stdin or a library API, never as a visible command-line argument.
+SSH_AUTH_MODE=password
+SSH_PRIVATE_KEY_PATH=
+SSH_PASSWORD=
 SSH_BASTION=
 
 # Project directory on the remote host
