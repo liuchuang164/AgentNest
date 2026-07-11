@@ -1,6 +1,8 @@
-# 实现蓝图
+# AgentNest Demo 实现蓝图
 
-本文件给 Codex 提供代码级模块划分。阶段顺序以 `CODEX_TASK.md` 为准，本文件解释每个包应该放什么、禁止放什么。
+本文件给 Codex 提供代码级模块划分。阶段顺序以 `CODEX_TASK.md` 为准。
+
+原则：先让真实 OpenClaw 三层链路跑通，再实现最小隔离、生命周期和恢复。不要提前建设生产安全平台。
 
 ---
 
@@ -11,8 +13,8 @@ apps/
   control-plane/
     src/
       api/
-      application/
       domain/
+      application/
       infrastructure/
       workers/
   data-gateway-mock/
@@ -20,7 +22,6 @@ apps/
 
 packages/
   contracts/
-  capability/
   persistence/
   openclaw-adapter/
   tenant-runtime-plugin/
@@ -28,53 +29,49 @@ packages/
 
 skills/
   legal-evidence-check/
-    SKILL.md
-    manifest.json
   robot-dog-health-check/
-    SKILL.md
-    manifest.json
 
 infra/
   docker-compose.yml
   postgres/migrations/
-  minio/
-  openclaw/templates/
+  openclaw/
 
 scripts/
   deploy/
   verify/
-  dev/
 
 tests/
   e2e/
-  security/
+  isolation/
   lifecycle/
-  resilience/
 ```
+
+第一版不创建 Redis、MinIO、Kafka 或 Capability Token 包。
 
 ---
 
-## 2. control-plane 分层
+## 2. `apps/control-plane`
 
-### domain
+### `domain`
 
-只包含纯领域逻辑：
+纯领域对象：
 
 ```text
 LogicalAgent
 RuntimeInstance
 TaskState
-CapabilitySnapshot
-CapabilityGrant
+TenantCapabilityProfile
+TaskTemplate
+ExecutionContext
 LifecyclePolicy
 Agent/Task state machine
 Capability intersection
 ID derivation
 ```
 
-禁止：HTTP、数据库 Client、OpenClaw API、环境变量。
+禁止依赖 HTTP、数据库 Client 或 OpenClaw CLI。
 
-### application
+### `application`
 
 用例：
 
@@ -83,54 +80,45 @@ SubmitTask
 EnsureTenantBizAgent
 DispatchTask
 SpawnTaskAgent
+ResolveTenantCapabilities
+CreateExecutionContext
 CheckpointAgent
 UnloadAgent
 RestoreAgent
 RunReaperOnce
-ResolveCapabilities
-IssueCapabilityToken
 ```
 
-### infrastructure
-
-实现端口：
+### `infrastructure`
 
 ```text
-Postgres repositories
-Redis lock/heartbeat
-MinIO blob store
+PostgreSQL repositories
 OpenClaw adapter
-JWT/JWS signer
-Clock
-Metrics
+Persistent file store
+System/Fake Clock
+Structured logger
 ```
 
-### api
+### `api`
 
 - Fastify routes；
 - Schema validation；
-- Auth context；
 - error mapping；
-- OpenAPI registration；
-- 不承载领域逻辑。
+- OpenAPI；
+- 不放核心业务逻辑。
 
-### workers
+### `workers`
 
 - Lifecycle Reaper；
-- Outbox publisher；
-- OpenClaw reconciliation；
-- stale task recovery。
+- stale task recovery；
+- OpenClaw observed-state reconciliation（最小实现）。
+
+不实现 Outbox publisher、leader election 或分布式调度。
 
 ---
 
-## 3. packages/contracts
+## 3. `packages/contracts`
 
-单一契约来源：
-
-- TypeBox/Zod 等运行时 Schema；
-- 从同一来源导出 TypeScript 类型；
-- 生成 JSON Schema/OpenAPI；
-- 禁止手写三套容易漂移的类型。
+使用一套运行时 Schema 生成 TypeScript 类型和 OpenAPI/JSON Schema。
 
 至少包含：
 
@@ -138,216 +126,247 @@ Metrics
 TaskRequest/Response
 AgentStatus
 TaskStatus
-CapabilitySnapshot
-CapabilityTokenClaims
+TenantCapabilityProfile
+ExecutionContext
 ToolExecuteRequest/Response
 TraceEvent
 CheckpointRecord
-DeploymentManifest
-TestSummary
 ```
+
+不包含 Capability Token Claims。
 
 ---
 
-## 4. packages/capability
+## 4. 能力配置
 
-模块：
+能力模块可以直接放在 control-plane domain/application 中，也可以做轻量 package。
+
+建议文件：
 
 ```text
-catalog.ts
-resolver.ts
-intersection.ts
-snapshot.ts
-token.ts
-policy-diff.ts
-errors.ts
+capability/catalog.ts
+capability/profile.ts
+capability/resolver.ts
+capability/intersection.ts
+capability/task-template.ts
+capability/errors.ts
 ```
 
 关键 API：
 
 ```ts
-resolveTenantBizCapabilities(scope): Promise<ResolvedCapabilities>
-createSnapshot(resolved): CapabilitySnapshot
-intersectForTask(parent, template, current): EffectiveTaskCapability
+resolveTenantBizProfile(scope): Promise<TenantCapabilityProfile>
+intersectForTask(parent, template): EffectiveTaskCapability
 assertSubset(child, parent): void
-issueToken(context): Promise<string>
-verifyToken(token, expectedContext): Promise<VerifiedCapability>
 ```
 
-交集必须以 tool action、resource scope、memory access 和 TTL 为粒度。
+只处理：
+
+- Skill 名称；
+- Tool 名称和 action；
+- Memory Scope；
+- 生命周期参数。
+
+不处理签名、nonce、revoke、issuer/audience 或通用 Policy DSL。
 
 ---
 
-## 5. packages/openclaw-adapter
+## 5. `packages/openclaw-adapter`
 
 职责：
 
-- 安装版本检查；
-- 获取 config schema；
-- 结构化修改 OpenClaw config；
-- Profile ensure/deactivate；
-- observed state 验证；
-- dispatch；
-- Session inspect/archive；
-- Gateway health。
+- 检查 OpenClaw stable 版本；
+- 创建/更新/停用 L1 Profile；
+- 检查 observed Profile；
+- 向 L0/L1 dispatch；
+- 调用 `sessions_spawn` 创建 L2；
+- 查询和归档 Session；
+- 健康检查。
 
-优先级：
+实现优先级：
 
-1. 官方 Config RPC；
+1. 官方 Config API/RPC；
 2. 官方 CLI 非交互命令；
-3. 带 revision/CAS 的结构化 JSON 文件写入；
-4. 禁止 sed/regex 修改 JSON。
+3. 结构化 JSON 配置更新和 reload；
+4. 若 stable 确实限制动态 Profile，使用有限模板或受控多实例方案。
 
-所有外部命令：
+禁止：
 
-- 参数数组调用，不拼 shell 字符串；
-- timeout；
-- stdout/stderr 脱敏；
-- exit code 检查；
-- 记录命令名但不记录密钥。
+- sed/regex 直接改 JSON；
+- 把不同 L1 指向同一 agentDir；
+- 用 beta 版本绕过实现困难；
+- 第一版 fork OpenClaw 核心。
 
 ---
 
-## 6. packages/tenant-runtime-plugin
+## 6. `packages/tenant-runtime-plugin`
 
-这是 OpenClaw 插件，职责仅限：
+职责保持最小：
 
-- 从 agent/session context 解析 `runtime_instance_id`；
-- 从 Control Plane 获取或缓存当前 Capability Context；
-- 过滤 Tool definitions；
-- Tool 执行前 action 检查；
-- 注入 Capability Token；
-- 调用 Data/External Gateway；
-- 生成标准 ToolResult；
+- 从 Agent/Session 解析 `execution_context_id`；
+- 根据当前 L1/L2 能力过滤 Tool Definition；
+- Tool 执行前检查当前视图是否包含 tool/action；
+- 将 `execution_context_id` 和调用参数发送给 Gateway Mock；
+- 返回标准 ToolResult；
 - 写 Trace hook。
 
 禁止：
 
-- 自己决定 tenant；
-- 用 plugin 静态 `tenantId` 作为生产身份；
-- 持有数据库或 MinIO 管理凭证；
-- 绕过 Gateway 直接访问真实数据；
-- 在本地缓存长期 Memory。
-
-缓存 key 必须至少包含：
-
-```text
-runtime_instance_id + session_id + capability_snapshot_id
-```
-
-策略变化或 Token 过期必须失效。
+- 自行决定 tenant/biz；
+- 从 Plugin 静态配置读取一个固定 tenant 作为所有请求身份；
+- 直接访问 Demo 业务表；
+- 在 Plugin 内实现 JWT、PKI 或完整授权服务。
 
 ---
 
-## 7. Gateway Mock
+## 7. Execution Context
 
-两套 Gateway 共用安全中间件：
+Control Plane 为每个 L2 创建 PostgreSQL 记录：
 
 ```text
-parse token
-verify signature/audience/expiry
-bind request to token context
+execution_context_id UUID
+tenant_id
+biz_domain
+logical_agent_id
+runtime_instance_id
+session_id
+task_id
+allowed_skills
+allowed_tools + actions
+resource_scope
+expires_at
+```
+
+Gateway 通过 ID 读取该记录并校验调用。
+
+建议 API：
+
+```ts
+createExecutionContext(input): Promise<ExecutionContext>
+getExecutionContext(id): Promise<ExecutionContext | null>
+assertToolAllowed(context, toolName, action): void
+assertResourceAllowed(context, resource): void
+```
+
+---
+
+## 8. Gateway Mock
+
+两套 Gateway 共用轻量执行流程：
+
+```text
+validate request schema
+load execution context
+check expiry
 check tool/action
 check resource scope
-check idempotency/replay
 execute deterministic handler
-write audit + trace
-return standard response
+write ALLOW/DENY trace
+return response
 ```
 
-Mock Handler 必须真的产生可检查副作用，例如写数据库记录；不能只返回预制 JSON，否则无法验证越权未造成副作用。
+Mock Handler 必须产生可查询副作用，例如在 PostgreSQL 写分析结果，才能验证越权请求没有副作用。
+
+不实现：
+
+- JWT 验签；
+- Token revoke/replay；
+- 限流/计费；
+- 熔断/复杂重试；
+- 任意 URL fetch。
 
 ---
 
-## 8. Skill 设计
+## 9. Demo Skill
 
-### LEGAL Skill
+### LEGAL
 
 输入：`case_id`。
 
 步骤：
 
-1. 调 `legal.case.read/read`；
-2. 对 Demo 材料做确定性检查；
-3. 调 `legal.analysis.write/write`；
+1. 调 `legal_case_read/read`；
+2. 执行确定性材料检查；
+3. 调 `legal_analysis_write/write`；
 4. 返回结构化结果。
 
-### ROBOT_DOG Skill
+### ROBOT_DOG
 
 输入：`device_id`。
 
 步骤：
 
-1. 调 `robot.device.read/read`；
-2. 对 Demo 指标做确定性健康判断；
-3. 调 `robot.health.write/write`；
+1. 调 `robot_device_read/read`；
+2. 执行确定性健康判断；
+3. 调 `robot_health_write/write`；
 4. 返回结构化结果。
 
-Skill 业务逻辑保持简单，重点是 Tool 和租户隔离。
-
-每个 Skill manifest：
-
-```json
-{
-  "name": "legal-evidence-check",
-  "version": "1.0.0",
-  "required_tools": {
-    "legal.case.read": ["read"],
-    "legal.analysis.write": ["write"]
-  }
-}
-```
+Skill 业务逻辑保持简单，重点验证 Agent 层级和隔离。
 
 ---
 
-## 9. 配置生成
-
-不能直接让模型编辑完整 `openclaw.json`。
-
-流程：
-
-1. Control Plane 生成 `OpenClawAgentProfileSpec`；
-2. Adapter 读取当前配置和 revision；
-3. 合并/替换指定 `agents.list[]` 项；
-4. 通过 OpenClaw Schema 校验；
-5. 原子写入/Config RPC；
-6. 等待 hot reload；
-7. 读取 observed profile；
-8. 比较 workspace、agentDir、skills、tools、sandbox；
-9. 一致后才提交 ACTIVE 状态。
-
-同一逻辑 L1 并发 ensure 必须只有一个写入者。
-
----
-
-## 10. 数据库迁移顺序
+## 10. PostgreSQL 迁移
 
 建议：
 
 ```text
 001_tenant_business.sql
-002_capability_catalog.sql
-003_capability_binding.sql
-004_capability_snapshot.sql
-005_logical_agent.sql
-006_runtime_instance.sql
-007_task_state.sql
-008_session_snapshot.sql
-009_memory.sql
-010_trace_event.sql
-011_tool_audit.sql
-012_idempotency.sql
-013_outbox.sql
-014_demo_resources.sql
+002_tenant_capability_profile.sql
+003_logical_agent.sql
+004_runtime_instance.sql
+005_task.sql
+006_execution_context.sql
+007_session_summary.sql
+008_memory.sql
+009_trace.sql
+010_demo_resources.sql
+011_demo_results.sql
 ```
 
-所有业务表主键之外应有 tenant+biz 索引。
+业务和状态表必须有 tenant+biz 索引。
 
 ---
 
-## 11. 可观测性
+## 11. Runtime Registry
 
-结构化日志字段：
+Control Plane 可以使用：
+
+```ts
+Map<logicalAgentId, ActiveRuntime>
+```
+
+缓存活跃 L1/L2 对象。
+
+要求：
+
+- Map 只是可重建 cache；
+- logical agent、runtime instance、task 和 checkpoint 状态保存在 PostgreSQL；
+- Control Plane 重启后可以从数据库恢复逻辑状态；
+- 单节点 Demo 使用进程互斥或 PostgreSQL 行锁防止重复 ensure。
+
+不实现 Redis 心跳和多节点分布式锁。
+
+---
+
+## 12. Transcript 与 checkpoint 文件
+
+```text
+runtime/persistence/<logical_agent_id>/
+  sessions/<session_id>.jsonl
+  sessions/<session_id>.summary.json
+  tasks/<task_id>.checkpoint.json
+  tasks/<task_id>.result.json
+```
+
+路径由服务端逻辑 ID 派生并做根目录检查。
+
+不要求 MinIO、对象 hash、加密 metadata 或对象访问网关。
+
+---
+
+## 13. 日志与 Trace
+
+结构化日志建议字段：
 
 ```text
 service
@@ -355,7 +374,7 @@ level
 event
 request_id
 trace_id
-tenant_id_hash
+tenant_id
 biz_domain
 logical_agent_id
 runtime_instance_id
@@ -365,53 +384,54 @@ code
 latency_ms
 ```
 
-默认不要在日志明文输出 tenant 原始名称，可使用 hash/内部 ID。
+日志不得记录密码、模型 Key、私钥或完整连接串。
 
-指标：
+Trace 只需要支持：
 
 ```text
-agentnest_l1_active
-agentnest_l2_active
-agentnest_task_total{status}
-agentnest_tool_call_total{decision,tool}
-agentnest_reaper_total{result,level}
-agentnest_checkpoint_duration_seconds
-agentnest_restore_duration_seconds
-agentnest_capability_denied_total{reason}
-agentnest_openclaw_config_reload_total{result}
+AGENT_CREATED
+AGENT_REUSED
+L2_SPAWNED
+TOOL_ALLOWED
+TOOL_DENIED
+CHECKPOINT_COMPLETED
+AGENT_UNLOADED
+AGENT_RESTORED
+TASK_COMPLETED
+TASK_FAILED
 ```
+
+不实现 hash chain 或外部审计平台。
 
 ---
 
-## 12. 测试组织
+## 14. 测试组织
 
 ```text
-*.unit.test.ts       纯逻辑
-*.integration.test.ts 真实 PG/Redis/MinIO
-*.contract.test.ts   Schema/API
-tests/e2e            OpenClaw 三层链路
-tests/security       越权和副作用
-tests/lifecycle      fake clock/Reaper
-tests/resilience     重启与依赖故障
+*.unit.test.ts          纯逻辑
+*.integration.test.ts   PostgreSQL + Gateway Mock
+tests/e2e               真实 OpenClaw 三层链路
+tests/isolation         Skill/Tool/Memory/Session 隔离
+tests/lifecycle         fake clock、unload、restore
 ```
 
-所有 E2E 生成唯一 run namespace，避免并发污染。
+第一版不要求 Redis/MinIO/Testcontainers 故障矩阵和大规模 resilience suite。
 
 ---
 
-## 13. 推荐实现顺序
+## 15. 推荐实现顺序
 
-1. 领域状态和 Schema；
-2. Capability intersection/token；
-3. Persistence；
-4. Gateway Mock；
-5. Lifecycle/Reaper；
-6. OpenClaw Adapter；
-7. Tenant Plugin；
-8. L1 Profile 创建；
-9. L2 spawn；
-10. Skill Demo；
-11. Recovery；
-12. 远端部署与报告。
+1. 工程骨架与 Schema；
+2. Capability Profile 与交集；
+3. PostgreSQL Repository；
+4. L1 Runtime Registry；
+5. OpenClaw Adapter；
+6. L0/L1 Profile；
+7. L2 `sessions_spawn`；
+8. Execution Context 与 Gateway Mock；
+9. Demo Skill；
+10. Memory/Trace/Session Summary；
+11. Lifecycle/Reaper/Restore；
+12. 云端部署与验证。
 
-不要先写完整 UI。最早期通过 API、OpenClaw CLI 和测试报告验证。
+不要先写 UI，也不要先实现生产安全基础设施。
