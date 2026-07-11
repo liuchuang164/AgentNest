@@ -1,231 +1,199 @@
 # OpenClaw 兼容基线
 
-## 1. 基线版本
+## 1. 版本策略
 
-文档编写日期：`2026-07-11`。
+AgentNest 只使用 OpenClaw 官方 stable channel。
 
-官方 releases 页面当时显示：
+仓库文档编写时的版本记录只是参考，实际部署必须重新解析官方最新稳定版。
 
-```text
-v2026.7.1-beta.2  prerelease
-v2026.7.1-beta.1  prerelease
-v2026.6.11         stable
-```
+稳定版必须满足：
 
-因此仓库初始基线为：
+- GitHub Release `prerelease=false`，或 npm `latest`；
+- 版本字符串不含 `beta`、`alpha`、`rc`、`dev`；
+- 安装后 `openclaw --version` 与解析结果一致。
 
-```text
-OPENCLAW_CHANNEL=stable
-OPENCLAW_VERSION=2026.6.11
-```
-
-部署时必须实时重新解析官方最新 stable。如果出现比 2026.6.11 更新的正式 release，以部署时最新稳定版为准，但必须先运行兼容测试。
+禁止为了获得更方便的实验能力而切换 beta/dev。
 
 官方来源：
 
-- Releases: https://github.com/openclaw/openclaw/releases
-- Repository: https://github.com/openclaw/openclaw
-- Docs: https://docs.openclaw.ai/
+- https://github.com/openclaw/openclaw/releases
+- https://github.com/openclaw/openclaw
+- https://docs.openclaw.ai/
 
 ---
 
-## 2. 稳定版判定
+## 2. Demo 依赖的公开能力
 
-稳定版必须同时满足：
+### 2.1 Multi-agent Profiles
 
-- GitHub release `prerelease=false`；
-- tag 不含 `beta`、`alpha`、`rc`、`dev`；
-- npm `latest` 与 release 可交叉验证；
-- 安装后 `openclaw --version` 与解析版本一致。
+L1 依赖每个配置 Agent 可拥有独立：
 
-禁止因为 beta 有更方便的 capability feature 就切换 beta。本 Demo 要证明方案建立在稳定公共能力上。
-
----
-
-## 3. 依赖的官方能力
-
-### 3.1 Multi-agent Profiles
-
-本项目依赖每个配置 Agent 有独立：
-
-- workspace；
-- state directory (`agentDir`)；
-- session store；
-- per-agent config。
+```text
+workspace
+agentDir
+Session Store
+per-agent config
+```
 
 参考：
 
 https://docs.openclaw.ai/concepts/multi-agent
 
-关键约束：不得跨 Agent 复用 agentDir。
+不同 L1 不得复用同一个 `agentDir`。
 
-### 3.2 Per-agent Skill allowlist
+### 2.2 Per-agent Skill allowlist
 
-依赖：
-
-```text
-agents.list[].skills
-```
-
-预期语义：
-
-- 省略时继承 defaults；
-- 空数组表示无 Skill；
-- 非空列表是最终集合，不与 defaults 合并。
+依赖实际 stable Schema 中的 per-agent Skill 配置，预期能为每个 L1 设置显式最终 allowlist。
 
 参考：
 
 https://docs.openclaw.ai/tools/skills
 
-AgentNest L1 必须使用显式最终 allowlist。
+如果字段语义与文档不同，以部署版本的 `openclaw config schema` 和 smoke test 为准。
 
-### 3.3 Per-agent Tool/Sandbox policy
+### 2.3 Per-agent Tool policy
 
-依赖：
+依赖每个 Agent 可以配置 Tool allow/deny 或等价能力。
 
-```text
-agents.list[].tools.allow
-agents.list[].tools.deny
-agents.list[].sandbox
-```
+Tool policy 用于限制模型可见性和正常调用路径；Gateway Mock 仍根据服务端 Execution Context 检查 tool/action/resource scope。
 
-具体字段必须以部署版本实际 `openclaw config schema` 为准。
-
-Tool policy 只控制 OpenClaw 可见/可调用能力，不替代 Gateway 鉴权。
-
-### 3.4 Native Sub-agents
+### 2.4 Native Sub-agents
 
 L2 依赖：
 
 ```text
 sessions_spawn
-sessions_yield
-subagents
+subagent 独立 Session
 ```
 
 参考：
 
 https://docs.openclaw.ai/tools/subagents
 
-基线行为：
+Demo 只需要 L1 派生 L2，一层 native Sub-agent 即可。
 
-- `sessions_spawn` 非阻塞；
-- 默认 context 为 isolated；
-- Sub-agent 有独立 Session；
-- 模型/思考级别可以继承；
-- Tool 可用性受 effective policy 约束；
-- auto-archive 默认 60 分钟；
-- auto-archive timer 是 best-effort，Gateway 重启可能丢失；
-- auto-archive 对 depth 1/2 使用相同配置；
-- 本 Demo 仅用 L1 Profile 派生 L2，`maxSpawnDepth=1` 足够。
-
-### 3.5 Session Store
-
-官方 Session 路径：
-
-```text
-~/.openclaw/agents/<agentId>/sessions/sessions.json
-~/.openclaw/agents/<agentId>/sessions/<sessionId>.jsonl
-```
+### 2.5 Session Store
 
 参考：
 
 https://docs.openclaw.ai/concepts/session
 
-AgentNest 会在此基础上额外保存 MinIO Transcript 快照、hash 和数据库索引。
+AgentNest 在 OpenClaw Session Store 之外，额外保存：
 
-### 3.6 Config hot reload
+```text
+Session Summary
+TaskState
+Memory
+Trace
+Transcript 路径
+```
 
-OpenClaw Gateway 监控配置并支持多数设置热加载，且严格 Schema 校验。
+第一版 Transcript 可以保存在本地持久化 volume，不要求 MinIO。
+
+### 2.6 Config reload / Profile management
 
 参考：
 
 https://docs.openclaw.ai/gateway/configuration
 
-AgentNest 必须：
+AgentNest 应优先使用：
 
-- 先校验 Schema；
-- 结构化写配置；
-- 验证 observed state；
-- 处理 reload reject；
-- 不假设所有字段都无需 restart；
-- 保存 last-known-good。
+1. 官方 Config API/RPC；
+2. 官方 CLI；
+3. 结构化 JSON 更新和 reload。
+
+要求：
+
+- 更新前校验实际 Schema；
+- 更新后检查 observed Profile；
+- 配置失败时不把 Runtime 标记为 ACTIVE；
+- 禁止 sed/regex 直接改 JSON。
+
+如果 stable 版无法动态创建 Profile，可采用有限模板 Profile 或受控多实例方案，只要能证明三个 tenant/biz scope 的隔离。
 
 ---
 
-## 4. 不应依赖的能力
+## 3. 不依赖的能力
 
 第一版不得依赖：
 
-- 仅 beta/dev 存在的 per-conversation capability profiles；
-- OpenClaw 未文档化内部模块；
-- 具体源码文件路径或私有函数；
-- auto-archive timer 作为权威生命周期；
-- Prompt 作为授权边界；
-- 全局插件存储自动按 Agent 分隔；
-- Main Agent OAuth fallback 能提供完全独立认证；
-- 未审核 ClawHub Skill。
+- beta/dev 才有的 per-conversation capability；
+- OpenClaw 未文档化内部函数；
+- Prompt 作为租户授权边界；
+- auto-archive timer 作为唯一生命周期机制；
+- 全局 Plugin Store 自动按 Agent 隔离；
+- 未审核的在线 Skill；
+- OpenClaw 核心源码 patch。
 
 ---
 
-## 5. 兼容性探测
+## 4. 兼容性探测
 
-Codex 必须实现自动探测，不要只依赖版本号：
+Codex 必须实际运行可用的命令，例如：
 
 ```text
 openclaw --version
+openclaw doctor
+openclaw gateway status
 openclaw config schema
 openclaw agents list
-openclaw gateway status
 ```
 
-并通过最小 smoke test 确认：
+并通过 smoke test 确认：
 
-1. 可以创建第二 Agent Profile；
-2. workspace/agentDir 生效；
-3. Skill allowlist 生效；
-4. Tool policy 生效；
-5. sandbox 生效；
+1. Main Profile 可运行；
+2. 可以创建或激活第二个 L1 Profile；
+3. workspace/agentDir 生效；
+4. Skill allowlist 生效；
+5. Tool policy 生效；
 6. `sessions_spawn` 可用；
-7. child Session 独立；
-8. config reload 后 observed state 更新；
-9. Session transcript 可定位；
-10. restart 后 Session store 可读。
+7. L2 Session 独立；
+8. Session/Transcript 可以定位；
+9. OpenClaw 重启后已持久化 Session 信息仍可读取。
 
-探测失败时，报告实际 Schema 和差异，不允许硬编码绕过。
-
----
-
-## 6. 升级策略
-
-每次升级 OpenClaw：
-
-1. 解析新 stable；
-2. 保存旧版本清单；
-3. 在隔离 staging profile 安装；
-4. 运行 compatibility smoke；
-5. 运行全部隔离负向测试；
-6. 运行生命周期/recovery；
-7. 检查 config schema diff；
-8. 通过后再更新 baseline；
-9. 失败则继续使用前一个 stable，并记录阻断原因。
-
-禁止自动追随 `latest` 而不做验证。
+探测失败时，应记录实际 stable 版限制并选择最小替代方案，不得偷偷改用预发布版本。
 
 ---
 
-## 7. 已知边界
+## 5. Demo 的隔离组合
 
-OpenClaw 的 per-agent workspace 不是自动的宿主文件系统强隔离；启用 sandbox 才能形成更强边界。Skill allowlist 也不是 shell 授权边界。因此 AgentNest 方案使用：
+第一版验证：
 
 ```text
-per-agent Profile
+per-agent L1 Profile
++ independent workspace/agentDir/Session namespace
 + explicit Skill allowlist
-+ Tool policy
-+ agent-scoped sandbox
-+ signed Capability Token
-+ Gateway resource authorization
-+ tenant-scoped persistence
++ explicit Tool allowlist
++ L2 subset intersection
++ server-side execution_context_id
++ Gateway Mock resource check
++ tenant/biz-scoped PostgreSQL persistence
 ```
 
-这是 Demo 必须验证的纵深防御组合。
+不要求：
+
+```text
+signed Capability Token
+PKI/mTLS
+Redis/MinIO/Kafka/Outbox
+multi-node HA
+vector database
+production audit chain
+```
+
+---
+
+## 6. 版本记录
+
+部署结果至少记录：
+
+```text
+OpenClaw version
+安装来源
+解析 stable 的来源
+Node version
+部署时间
+AgentNest commit
+```
+
+不要求复杂升级平台。版本变更后重新运行兼容性 smoke、隔离测试和生命周期测试即可。
