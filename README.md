@@ -1,26 +1,21 @@
 # AgentNest
 
-AgentNest 是一个基于 **OpenClaw 最新稳定版**进行二次开发的多租户三层 Agent Demo，用于验证：
+AgentNest 是一个基于 **OpenClaw 官方最新稳定版**的三层多租户 Agent Demo，用于验证：
 
 - L0 `Main Agent` 负责平台级路由；
-- L1 `TenantBizAgent` 以 `tenant_id + biz_domain` 为强隔离边界；
-- L2 `TaskAgent` 继承 L1 权限的子集，执行真实业务；
-- Skill、Tool、Memory、Session、Trace、数据访问范围均不能跨租户或跨业务域；
-- L1 空闲 24 小时后卸载运行态，L2 空闲 1 小时后归档运行态；
-- 卸载前必须持久化 Session、Memory、Trace、TaskState，随后可以恢复为新的运行实例。
+- L1 `TenantBizAgent` 以 `tenant_id + biz_domain` 作为隔离边界；
+- L2 `TaskAgent` 由 L1 使用原生 `sessions_spawn` 创建；
+- L2 的 Skill、Tool、action 和 Memory Scope 只能是 L1 的子集；
+- Skill、Tool、Memory、Session 和 workspace 不跨租户或业务域；
+- L1 空闲 24 小时后卸载运行态，L2 空闲 1 小时后卸载运行态；
+- 卸载前持久化 Session Summary、Memory、Trace 和 TaskState；
+- 后续请求可以创建新的 runtime instance 并恢复必要状态。
 
-> 本仓库当前首先提供 Codex 开发约束、架构契约、部署约束和完整验证方案。Codex 必须按阶段逐步补齐代码、自动化部署与测试，不得绕过验收门槛。
+> 这是技术验证 Demo，不是生产级零信任、IAM、审计或高可用平台。优先完成真实 OpenClaw 三层链路和最小隔离闭环。
 
 ## OpenClaw 基线
 
-截至 2026-07-11，OpenClaw 官方 releases 页面中最新稳定版为 `v2026.6.11`，更新的 `v2026.7.1-beta.*` 属于预发布版。本 Demo 默认基线：
-
-```text
-OPENCLAW_CHANNEL=stable
-OPENCLAW_VERSION=2026.6.11
-```
-
-Codex 在远端部署前必须再次从 OpenClaw 官方 releases 或 npm `latest` dist-tag 验证最新稳定版，排除 `beta`、`dev`、RC 和任意预发布版本，并将最终版本、tag、commit、安装来源写入部署清单。
+只使用官方 stable channel。部署时必须重新解析并记录实际稳定版本，禁止 beta、alpha、RC、dev 和未发布 `main` 特性。
 
 官方参考：
 
@@ -31,12 +26,12 @@ Codex 在远端部署前必须再次从 OpenClaw 官方 releases 或 npm `latest
 - https://docs.openclaw.ai/concepts/session
 - https://docs.openclaw.ai/gateway/configuration
 
-## 目标架构
+## 架构
 
 ```mermaid
 flowchart TB
     Client[业务服务 / Demo Client]
-    API[AgentNest Control Plane API]
+    CP[AgentNest Control Plane]
     Main[L0 Main Agent]
     Registry[Tenant Capability Registry]
 
@@ -45,77 +40,75 @@ flowchart TB
     L1C[L1 tenant_B + LEGAL]
 
     L2A[L2 Evidence TaskAgent]
-    L2B[L2 Legal Research TaskAgent]
-    L2C[L2 Device Health TaskAgent]
+    L2B[L2 Legal TaskAgent]
+    L2C[L2 Device TaskAgent]
 
     Plugin[OpenClaw Tenant Runtime Plugin]
-    DAG[Data Access Gateway Mock]
-    EAG[External Access Gateway Mock]
-    State[(PostgreSQL / MinIO / Redis)]
+    DAG[Data Gateway Mock]
+    EAG[External Gateway Mock]
+    PG[(PostgreSQL)]
+    FS[(Persistent Volume)]
     Reaper[Lifecycle Reaper]
 
-    Client --> API --> Main
+    Client --> CP --> Main
     Main --> Registry
     Main --> L1A
     Main --> L1B
     Main --> L1C
-    L1A --> L2A
-    L1A --> L2B
-    L1B --> L2C
+    L1A -->|sessions_spawn| L2A
+    L1A -->|sessions_spawn| L2B
+    L1B -->|sessions_spawn| L2C
     L2A --> Plugin
     L2B --> Plugin
     L2C --> Plugin
     Plugin --> DAG
     Plugin --> EAG
-    L1A --> State
-    L1B --> State
-    L1C --> State
-    L2A --> State
-    L2B --> State
-    L2C --> State
-    Reaper --> L1A
-    Reaper --> L1B
-    Reaper --> L1C
-    Reaper --> State
+    CP --> PG
+    DAG --> PG
+    EAG --> PG
+    CP --> FS
+    Reaper --> CP
 ```
 
 ## OpenClaw 映射
 
-| 逻辑层 | 推荐实现 | 关键隔离 |
+| 逻辑层 | 推荐实现 | 隔离重点 |
 |---|---|---|
-| L0 Main Agent | 固定 `main` Agent Profile | 只拥有租户路由与 Agent 管理能力 |
-| L1 TenantBizAgent | 动态创建/激活的独立 OpenClaw Agent Profile | 独立 workspace、agentDir、session store、Skill allowlist、Tool policy、Memory namespace |
-| L2 TaskAgent | L1 通过原生 `sessions_spawn` 创建的 Sub-agent | 独立任务 Session，只继承父级权限子集 |
+| L0 Main Agent | 固定 `main` Profile | 只拥有租户路由和 Agent 管理能力 |
+| L1 TenantBizAgent | 独立 OpenClaw Agent Profile | 独立 workspace、agentDir、Session、Skill/Tool allowlist、Memory namespace |
+| L2 TaskAgent | 原生 `sessions_spawn` Sub-agent | 独立任务 Session，权限为 L1 子集 |
 
-L1 不允许仅用 Prompt 模拟隔离。必须利用 OpenClaw 每 Agent 独立 workspace、agentDir、Session Store、Skill allowlist、Tool allow/deny，并在 Gateway 层再次强校验。
+L1 不能只靠 Prompt 模拟隔离。
 
-## 目录导航
+## Demo 安全基线
 
-- [`AGENTS.md`](AGENTS.md)：Codex 必须遵守的最高优先级开发约束
-- [`CODEX_TASK.md`](CODEX_TASK.md)：开发任务、阶段和交付物
-- [`docs/architecture.md`](docs/architecture.md)：完整架构及模块职责
-- [`docs/contracts.md`](docs/contracts.md)：接口、状态和权限契约
-- [`docs/security-isolation.md`](docs/security-isolation.md)：租户、业务、Skill、Tool、Memory 隔离规则
-- [`docs/lifecycle-persistence.md`](docs/lifecycle-persistence.md)：生命周期、持久化与恢复
-- [`docs/implementation-plan.md`](docs/implementation-plan.md)：分阶段开发方案
-- [`docs/deployment-runbook.md`](docs/deployment-runbook.md)：基于 `config.txt` 的云端部署规范
-- [`docs/validation-test-plan.md`](docs/validation-test-plan.md)：自动化验证与故障测试方案
-- [`docs/acceptance-checklist.md`](docs/acceptance-checklist.md)：最终验收清单
-- [`docs/openclaw-baseline.md`](docs/openclaw-baseline.md)：OpenClaw 兼容基线与禁止项
+第一版使用最小、可验证的安全机制：
 
-## 机密配置
+1. 所有 Task、Memory、Trace、Session 和 Demo Resource 查询强制携带 `tenant_id + biz_domain`；
+2. L1/L2 使用显式 Skill/Tool allowlist；
+3. Control Plane 在 PostgreSQL 创建随机 UUID `execution_context_id`；
+4. Gateway Mock 通过 ID 读取服务端权威 Tool/action/resource scope；
+5. Gateway 不相信模型或 Tool body 自报的 tenant/biz；
+6. 越权调用必须被拒绝、不能产生业务副作用，并记录 `DENY` Trace；
+7. workspace/agentDir 路径由稳定 hash ID 派生并做根目录校验；
+8. `config.txt`、模型 Key、SSH 凭证禁止进入 Git 和日志。
 
-仓库是公开的。真实云服务器、SSH、模型密钥和 API 凭证只能写入本地 `config.txt` 或本地 `.env`，两者均被 `.gitignore` 排除。
+第一版**不实现**：
 
-```bash
-cp config.example.txt config.txt
+```text
+Capability Token/JWT/PASETO
+PKI/mTLS/完整 IAM
+Redis/MinIO/Kafka/Outbox
+分布式锁与多节点 HA
+向量数据库
+审计 hash chain
+Kubernetes
+生产计费、配额和大规模压测
 ```
 
-任何脚本、日志、测试报告、部署清单和提交都不得输出密钥、私钥、密码、完整 Token 或带凭证 URL。
+这些只作为后续生产化建议。
 
-## Demo 最小范围
-
-必须至少准备：
+## 最小 Demo Scope
 
 ```text
 tenant_A + LEGAL
@@ -123,25 +116,66 @@ tenant_A + ROBOT_DOG
 tenant_B + LEGAL
 ```
 
-并验证：
+两个 LEGAL 租户都拥有 `case_001`，用于验证系统不能只按资源 ID 查询。
 
-1. 同一 `tenant_id + biz_domain` 复用同一逻辑 L1；
-2. 不同租户或业务域得到不同 L1、workspace、agentDir、Session 和 Memory namespace；
+必须验证：
+
+1. 同一 tenant/biz 复用同一 logical L1；
+2. 不同 scope 使用不同 Profile、workspace、agentDir、Session；
 3. LEGAL 看不到 ROBOT_DOG Skill/Tool，反之亦然；
-4. L2 只能获得 L1 能力的子集；
-5. 伪造 Tool 调用在 Gateway 层被拒绝；
-6. L2 空闲超时后持久化并卸载；
-7. L1 空闲超时后持久化并卸载；
-8. 重建后恢复摘要、Memory、Trace 与未完成任务状态；
-9. OpenClaw Gateway 重启后无“幽灵 Agent”，可由持久化状态恢复；
-10. 所有测试可通过缩短 TTL 或注入测试时钟完成，禁止真的等待 1 小时或 24 小时。
+4. L2 权限不超过 L1；
+5. Memory 不跨 tenant/biz；
+6. L2 TTL 卸载前状态持久化；
+7. L1 TTL 卸载并可恢复；
+8. 恢复后 logical ID 不变、runtime ID 改变；
+9. 至少一条任务真实经过 OpenClaw L0 → L1 → L2 → Mock Tool。
 
-## 非目标
+## 技术栈
 
-第一版 Demo 不追求：
+```text
+Node.js 24
+TypeScript strict
+pnpm
+Fastify
+PostgreSQL 16
+Vitest
+Docker Compose
+OpenClaw stable
+```
 
-- 生产级计费、HA、多区域部署；
-- 修改 OpenClaw 核心模型循环；
-- 使用 beta/dev OpenClaw 特性；
-- 接入真实法律、设备或企业数据；
-- 把 Prompt 当成安全边界。
+第一版 Transcript/Checkpoint 可存到本地持久化 volume，不要求对象存储。
+
+## 文档导航
+
+- [`AGENTS.md`](AGENTS.md)：最高优先级开发约束
+- [`CODEX_TASK.md`](CODEX_TASK.md)：阶段实施任务书
+- [`docs/architecture.md`](docs/architecture.md)：三层 Agent 架构
+- [`docs/contracts.md`](docs/contracts.md)：接口与数据契约
+- [`docs/security-isolation.md`](docs/security-isolation.md)：Demo 最小隔离基线
+- [`docs/lifecycle-persistence.md`](docs/lifecycle-persistence.md)：生命周期与恢复
+- [`docs/implementation-plan.md`](docs/implementation-plan.md)：代码模块建议
+- [`docs/deployment-runbook.md`](docs/deployment-runbook.md)：云端部署
+- [`docs/validation-test-plan.md`](docs/validation-test-plan.md)：测试方案
+- [`docs/acceptance-checklist.md`](docs/acceptance-checklist.md)：验收清单
+- [`docs/codex-kickoff-prompt.md`](docs/codex-kickoff-prompt.md)：可直接交给 Codex 的提示词
+
+## 本地机密配置
+
+```bash
+cp config.example.txt config.txt
+```
+
+`config.txt` 和 `.env` 已被 Git 忽略。脚本、日志、Issue 和测试报告不得输出密码、私钥、模型/API Key 或完整连接串。
+
+## 最终命令目标
+
+```bash
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm demo:preflight
+pnpm demo:deploy
+pnpm demo:status
+pnpm demo:verify
+```
