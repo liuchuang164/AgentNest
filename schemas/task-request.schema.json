@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentnest.example/schemas/task-request.schema.json",
+  "title": "AgentNest Task Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "idempotency_key",
+    "tenant_id",
+    "biz_domain",
+    "user_id",
+    "role",
+    "task_type",
+    "resource",
+    "input",
+    "execution"
+  ],
+  "properties": {
+    "request_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "idempotency_key": { "type": "string", "minLength": 8, "maxLength": 256 },
+    "tenant_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "biz_domain": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+    "user_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "role": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "task_type": {
+      "enum": ["LEGAL_EVIDENCE_CHECK", "ROBOT_DOG_HEALTH_CHECK"]
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_type", "resource_id"],
+      "properties": {
+        "resource_type": { "enum": ["CASE", "DEVICE"] },
+        "resource_id": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": true,
+      "maxProperties": 50
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["async"],
+      "properties": {
+        "async": { "type": "boolean" },
+        "model": { "type": ["string", "null"] },
+        "thinking": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "task_type": { "const": "LEGAL_EVIDENCE_CHECK" } },
+        "required": ["task_type"]
+      },
+      "then": {
+        "properties": {
+          "biz_domain": { "const": "LEGAL" },
+          "resource": {
+            "properties": { "resource_type": { "const": "CASE" } }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "task_type": { "const": "ROBOT_DOG_HEALTH_CHECK" } },
+        "required": ["task_type"]
+      },
+      "then": {
+        "properties": {
+          "biz_domain": { "const": "ROBOT_DOG" },
+          "resource": {
+            "properties": { "resource_type": { "const": "DEVICE" } }
+          }
+        }
+      }
+    }
+  ]
+}
