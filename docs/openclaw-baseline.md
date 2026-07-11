@@ -85,11 +85,11 @@ AgentNest L1 必须使用显式最终 allowlist。
 
 ```text
 agents.list[].tools.allow
-a gents.list[].tools.deny
+agents.list[].tools.deny
 agents.list[].sandbox
 ```
 
-> 实现时删除上面示意中的空格，字段必须以实际 Schema 为准。
+具体字段必须以部署版本实际 `openclaw config schema` 为准。
 
 Tool policy 只控制 OpenClaw 可见/可调用能力，不替代 Gateway 鉴权。
 
