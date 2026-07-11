@@ -8,6 +8,8 @@
 仓库：
 https://github.com/liuchuang164/AgentNest
 
+重要：开始前先同步远端最新 main。若当前工作区来自旧版任务书，出现 Capability Token、JWT/JWS/PASETO、nonce/revoke/replay、Redis、MinIO、Kafka、Outbox、分布式锁等实现，请停止继续扩展。先将旧工作保存到 backup 分支，再以 origin/main 的最新 AGENTS.md 和 CODEX_TASK.md 为准。旧实现只允许手工复用通用工程骨架、Fastify、PostgreSQL、领域模型、fake clock 和 Vitest；不要整批 cherry-pick 旧的安全框架。
+
 目标：
 基于 OpenClaw 官方最新稳定版，实现一个可部署、可自动验证的三层 Agent Demo：
 
@@ -56,7 +58,7 @@ Demo 最小安全机制：
 
 明确不要实现：
 - Capability Token/JWT/PASETO；
-- nonce/revoke/rotation；
+- nonce/revoke/rotation/replay security framework；
 - PKI/mTLS/零信任网络；
 - OAuth/完整 RBAC；
 - Redis、MinIO、Kafka、Outbox；
@@ -99,9 +101,17 @@ Demo 最小安全机制：
 - 修复失败；
 - 提交清晰 commit；
 - 更新 Issue #1；
-- 不伪造测试结果。
+- 不伪造测试结果；
+- 当前 Phase 已满足 Gate 后立即停止安全范围扩张并进入下一阶段。
 
-现在开始 Phase 1：
+远端 SSH：
+- config.txt 可以使用 SSH_AUTH_MODE=key 或 SSH_AUTH_MODE=password；
+- password 模式是本 Demo 明确支持的方式，不得因为没有私钥而阻塞；
+- password 必须通过环境变量、stdin、sshpass -e 或 SSH library API 传递，不得出现在命令行参数或日志；
+- config.txt 权限为 0600 后即可执行只读 preflight，不要继续增加 host-key PKI、堡垒机或企业密钥系统；
+- 首次 preflight 只读取 OS、CPU、内存、磁盘、Node/Docker/Git、端口和 REMOTE_WORKDIR 状态，不安装或删除内容。
+
+如果是全新开始，现在执行 Phase 1：
 1. 检查分支和工作区；
 2. 阅读上述文件；
 3. 检查 config.txt 是否存在，但不要输出内容；
@@ -115,22 +125,33 @@ Demo 最小安全机制：
 11. 更新 Issue #1；
 12. 提交 Phase 1 commit。
 
-不要继续讨论宏观方案，现在开始写代码。
+如果本地已经存在旧版 Phase 1/Phase 2 工作：
+1. 先创建 backup 分支保存现状，确认 config.txt 未被提交；
+2. fetch origin，并以最新 origin/main 为规范基线；
+3. 不继续旧版 Capability Token Phase 2；
+4. 只迁移仍符合当前 CODEX_TASK.md 的通用代码；
+5. 将当前实现重新映射到精简后的 Phase 1/2；
+6. 跑最终 Gate，提交后立即执行远端只读 preflight；
+7. 汇报真实服务器环境和部署阻塞项，不新增非任务书安全设计。
+
+不要继续讨论宏观方案，现在开始写代码或收口当前 Phase。
 ```
 
 ## 每阶段结束提示
 
 ```text
-先不要进入下一阶段。请执行当前 Phase 的所有 Gate，修复失败，然后给出：
+先不要扩大当前 Phase 的范围。执行当前 Phase 的既定 Gate，修复已有失败，然后给出：
 1. 改动文件；
 2. 实际运行的测试和结果；
 3. 真实 OpenClaw 行为与 Mock 行为的区分；
 4. 未解决问题；
 5. 下一阶段计划。
+
+禁止新增 Capability Token、JWT/JWS/PASETO、revoke/replay、Redis、MinIO、Outbox、分布式锁或其他非当前任务书要求的安全设计。当前 Gate 通过后提交并进入下一阶段。
 ```
 
 ## 远端部署前提示
 
 ```text
-先运行只读 preflight，不要修改服务器。只报告：OS、CPU、内存、磁盘、Docker/Node 可用性、端口占用、REMOTE_WORKDIR 状态和 OpenClaw stable 版本解析结果。不得回显 config.txt 或任何密钥。确认后再部署。
+config.txt 已配置并设置为 0600。允许 SSH_AUTH_MODE=password，不得要求改用私钥。现在只运行远端只读 preflight，不修改服务器。只报告：OS、CPU、内存、磁盘、Node/Docker/Git 可用性、端口占用、REMOTE_WORKDIR 状态和 OpenClaw stable 版本解析结果。密码只通过环境变量/stdin/sshpass -e 或 SSH library API 使用，不得回显。完成后立即汇报环境和真正的部署阻塞项，不继续新增安全设计。
 ```
