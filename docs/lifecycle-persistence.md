@@ -2,78 +2,69 @@
 
 ## 1. 核心语义
 
-本项目中的“销毁”定义为：
+本项目中的“销毁”表示：
 
-> 完成 checkpoint 后，从活跃运行时和 OpenClaw 活跃 Profile/Session 中卸载，不删除历史 Session、Memory、Trace、TaskState、Artifact 和审计记录。
+> 完成 checkpoint 后，从活跃 Runtime Registry 和 OpenClaw 活跃 Profile/Session 中卸载运行态，不删除历史 Session Summary、Memory、Trace、TaskState 或 Transcript 文件。
 
-为了避免歧义，代码和状态机优先使用：
+代码优先使用：
 
 ```text
 checkpoint
-archive
 unload
-destroy runtime
+archive
 restore
 ```
 
-而不是笼统的 `delete`。
+而不是含义不清的 `delete`。
+
+本文件面向单节点 Demo，不设计分布式协调、Outbox、Redis 锁或对象存储一致性协议。
 
 ---
 
 ## 2. 生命周期参数
 
-默认 Demo 参数：
+默认：
 
 ```text
-L1 TenantBizAgent idle TTL = 86400 seconds (24h)
-L2 TaskAgent idle TTL      = 3600 seconds (1h)
+L1 TenantBizAgent idle TTL = 86400 秒（24h）
+L2 TaskAgent idle TTL      = 3600 秒（1h）
 ```
 
-所有 TTL 必须：
+要求：
 
-- 可以按 tenant/biz 配置；
-- 可以通过环境变量覆盖；
-- 测试中使用 fake clock；
-- 存储为秒或绝对 UTC 时间；
-- 不依赖进程内 `setTimeout` 作为唯一触发机制。
-
-OpenClaw 原生 Sub-agent auto-archive 可保留为辅助，但数据库驱动 Reaper 是权威机制。
+- 可通过环境变量覆盖；
+- 测试使用 fake clock；
+- 时间统一使用 UTC；
+- 不允许测试真实等待 1 小时/24 小时；
+- OpenClaw auto-archive 可以辅助，但 AgentNest Reaper 负责 Demo 可重复验证。
 
 ---
 
-## 3. 活跃时间定义
+## 3. 活跃时间
 
-### 3.1 L1 last_active_at
+### L1 `last_active_at`
 
-以下行为更新 L1 `last_active_at`：
+以下行为更新：
 
-- 接收新业务任务；
+- 接收新任务；
 - 派生 L2；
-- 接收 L2 完成/失败 announce；
-- 用户对该 L1 的有效后续交互；
+- 收到 L2 完成/失败结果；
+- 有效用户后续交互；
 - 恢复未完成任务；
-- 执行有业务意义的 Tool/Memory 写入。
+- 有业务意义的 Memory/Tool 写入。
 
-以下行为不得延长空闲时间：
+health check、查询状态和 Reaper 扫描不更新。
 
-- health check；
-- metrics scrape；
-- Reaper 扫描；
-- 单纯读取 Agent 状态；
-- 后台审计补写；
-- Session store 维护时间戳变化。
+### L2 `last_active_at`
 
-### 3.2 L2 last_active_at
+以下行为更新：
 
-以下行为更新 L2：
-
-- 开始/结束一个 step；
+- 开始或结束任务 step；
 - Tool 调用开始/结束；
-- 等待 Tool 后恢复；
-- 接收用户补充输入；
+- 用户补充输入；
 - 写 checkpoint。
 
-任务 `COMPLETED` 后应立即 checkpoint，归档可随后进行，不需要继续保留一小时内存对象。
+任务完成后立即 checkpoint；不要求继续占用内存一小时。
 
 ---
 
@@ -82,53 +73,47 @@ OpenClaw 原生 Sub-agent auto-archive 可保留为辅助，但数据库驱动 R
 ```mermaid
 stateDiagram-v2
     [*] --> PROVISIONING
-    PROVISIONING --> ACTIVE: profile observed + state committed
-    PROVISIONING --> FAILED: config/dependency failure
-    ACTIVE --> IDLE: no active task
-    IDLE --> ACTIVE: new task
-    IDLE --> CHECKPOINTING: idle TTL reached
-    CHECKPOINTING --> IDLE: checkpoint failed
-    CHECKPOINTING --> UNLOADING: checkpoint committed
-    UNLOADING --> DESTROYED: runtime/profile unloaded
+    PROVISIONING --> ACTIVE
+    PROVISIONING --> FAILED
+    ACTIVE --> IDLE
+    IDLE --> ACTIVE
+    IDLE --> CHECKPOINTING: TTL reached
+    CHECKPOINTING --> IDLE: persistence failed
+    CHECKPOINTING --> UNLOADING: persistence succeeded
+    UNLOADING --> UNLOADED
     UNLOADING --> IDLE: unload failed
-    DESTROYED --> PROVISIONING: new request/restore
+    UNLOADED --> PROVISIONING: new request
 ```
 
-### 4.1 L1 卸载前置条件
+### L1 卸载条件
 
 必须同时满足：
 
 ```text
 now - last_active_at >= l1_idle_ttl
 active_l2_count == 0
-no task in RUNNING / SPAWNING / WAITING_TOOL / CHECKPOINTING
-runtime heartbeat is stale or instance agrees to checkpoint
-distributed unload lock acquired
+no task in RUNNING / SPAWNING / CHECKPOINTING
 ```
 
-### 4.2 L1 final checkpoint
+单节点 Demo 使用 PostgreSQL 行锁或进程内互斥防止同一个 Reaper run 重复处理即可。不实现 Redis 分布式锁。
 
-按顺序：
+### L1 checkpoint
 
-1. 状态 CAS：`IDLE → CHECKPOINTING`；
-2. 禁止新 L2 spawn；
-3. flush pending Trace/Outbox；
-4. 生成 Session Summary；
-5. 复制/归档 Transcript 到 MinIO；
-6. 计算 Transcript hash；
-7. flush Memory delta；
-8. 保存当前 Task index；
-9. 保存 Capability Snapshot reference；
-10. 写 checkpoint record；
-11. 事务提交；
-12. 状态切换 `UNLOADING`；
-13. 从 OpenClaw 配置/Runtime 卸载 Profile；
-14. 验证 Profile 已不可调度；
-15. 标记 Runtime Instance `DESTROYED`。
+步骤：
 
-任一步在第 11 步前失败：保持或恢复 `IDLE`，禁止卸载。
+1. 状态从 `IDLE` 改为 `CHECKPOINTING`；
+2. 暂停创建新的 L2；
+3. 保存 Session Summary；
+4. 保存 Memory；
+5. 保存 Trace；
+6. 保存当前 Capability Profile 摘要；
+7. 保存活跃/未完成 Task 索引；
+8. 保存 Transcript 文件路径；
+9. 提交 PostgreSQL 事务；
+10. 从 Runtime Registry 和 OpenClaw 活跃配置卸载；
+11. 状态改为 `UNLOADED`。
 
-第 13—14 步失败：状态进入 `UNLOAD_FAILED` 或恢复 `IDLE`，由 Reaper 重试。不能把数据库标记为 DESTROYED 后仍保留活跃 Profile。
+第 3—9 步任一失败：恢复 `IDLE`，不得标记 `UNLOADED`。
 
 ---
 
@@ -140,49 +125,35 @@ stateDiagram-v2
     QUEUED --> SPAWNING
     SPAWNING --> RUNNING
     SPAWNING --> FAILED
-    RUNNING --> WAITING_TOOL
-    WAITING_TOOL --> RUNNING
-    RUNNING --> WAITING_INPUT
-    WAITING_INPUT --> RUNNING
     RUNNING --> COMPLETED
     RUNNING --> FAILED
-    RUNNING --> CANCELLED
+    RUNNING --> WAITING_INPUT
+    WAITING_INPUT --> RUNNING
     COMPLETED --> CHECKPOINTED
     FAILED --> CHECKPOINTED
-    CANCELLED --> CHECKPOINTED
-    WAITING_INPUT --> CHECKPOINTED: freeze while waiting
-    CHECKPOINTED --> ARCHIVED
+    WAITING_INPUT --> CHECKPOINTED: freeze
+    CHECKPOINTED --> UNLOADED
 ```
 
-### 5.1 完成任务
+### L2 checkpoint
 
-L2 完成后立即：
+至少保存：
 
-- 保存 final result；
-- 保存 step state；
-- 保存 Tool Call index；
-- 保存 Transcript URI/hash；
-- 保存 Task Memory delta；
-- 写 completion Trace；
-- 标记 `CHECKPOINTED`。
+- TaskState 和 current step；
+- final/intermediate result；
+- Session Summary；
+- Memory；
+- Trace；
+- Transcript 路径；
+- `last_active_at`。
 
-OpenClaw Session 可以在后续 Reaper 或 auto-archive 中归档。
-
-### 5.2 等待用户输入
-
-`WAITING_INPUT` 不应该让 L2 内存对象长期常驻。进入等待状态时：
-
-1. checkpoint；
-2. 保存 resume instructions；
-3. 允许 Session/Runtime archive；
-4. 新输入到来时创建新运行实例或恢复 Session；
-5. 重新签发 Token，不能沿用过期 Token。
+等待用户输入时可以立即 checkpoint 并卸载，不需要空占运行内存。
 
 ---
 
-## 6. 权威存储模型
+## 6. 最小持久化模型
 
-### 6.1 tenant_biz_agent
+### `tenant_biz_agent`
 
 ```text
 logical_agent_id PK
@@ -190,30 +161,28 @@ tenant_id
 biz_domain
 status
 current_runtime_instance_id
-current_capability_snapshot_id
 last_active_at
 created_at
 updated_at
 UNIQUE(tenant_id, biz_domain)
 ```
 
-### 6.2 agent_runtime_instance
+### `agent_runtime_instance`
 
 ```text
 runtime_instance_id PK
 logical_agent_id
 openclaw_agent_id
 status
-capability_snapshot_id
 started_at
 last_active_at
 checkpointed_at
-destroyed_at
+unloaded_at
 restored_from_runtime_instance_id
-failure_code
+failure_reason
 ```
 
-### 6.3 agent_task_state
+### `agent_task`
 
 ```text
 task_id PK
@@ -225,33 +194,28 @@ l2_session_id
 task_type
 status
 current_step
-step_state JSONB
-input_ref/result_ref
-idempotency_key
-trace_id
+input_json
+result_json
 last_active_at
 created_at
 updated_at
-UNIQUE(tenant_id, biz_domain, idempotency_key)
 ```
 
-### 6.4 agent_session_snapshot
+### `agent_session_summary`
 
 ```text
-snapshot_id PK
+summary_id PK
 tenant_id
 biz_domain
 logical_agent_id
 runtime_instance_id
 session_id
 summary
-transcript_uri
-transcript_sha256
-last_message_offset
+transcript_path
 created_at
 ```
 
-### 6.5 agent_memory
+### `agent_memory`
 
 ```text
 memory_id PK
@@ -261,20 +225,16 @@ logical_agent_id
 session_id
 task_id
 memory_type
-visibility
 resource_type
 resource_id
-content_summary
-content_ref
-vector_ref
-content_hash
+content
 created_at
 ```
 
-### 6.6 agent_trace_event
+### `agent_trace`
 
 ```text
-event_id PK
+trace_event_id PK
 trace_id
 tenant_id
 biz_domain
@@ -283,46 +243,36 @@ runtime_instance_id
 session_id
 task_id
 event_type
-payload JSONB
-previous_hash
-event_hash
+decision
+reason
+event_json
 created_at
 ```
 
 ---
 
-## 7. MinIO 对象布局
+## 7. Transcript 文件布局
 
-推荐：
+第一版使用 Docker volume 或宿主项目目录：
 
 ```text
-agentnest-state/
-  tenants/<tenant-hash>/
-    biz/<biz-domain>/
-      agents/<logical-agent-id>/
-        runtime/<runtime-instance-id>/
-          sessions/<session-id>/transcript.jsonl
-          sessions/<session-id>/summary.json
-          tasks/<task-id>/checkpoint.json
-          tasks/<task-id>/result.json
-          artifacts/...
+runtime/persistence/
+  <logical_agent_id>/
+    sessions/
+      <session_id>.jsonl
+      <session_id>.summary.json
+    tasks/
+      <task_id>.checkpoint.json
+      <task_id>.result.json
 ```
 
-`tenant-hash` 只是路径标识，不替代数据库授权。对象读取必须经服务校验。
+路径必须由服务端逻辑 ID 构造，并确认最终路径位于 `runtime/persistence` 下。
 
-每次写入保存：
-
-- content type；
-- size；
-- SHA-256；
-- encryption metadata（如果启用）；
-- database owner reference。
+不要求 MinIO、hash chain 或加密元数据。
 
 ---
 
-## 8. Reaper 设计
-
-### 8.1 数据库驱动
+## 8. Reaper
 
 Reaper 周期扫描 PostgreSQL：
 
@@ -330,145 +280,101 @@ Reaper 周期扫描 PostgreSQL：
 SELECT ...
 FROM agent_runtime_instance
 WHERE status IN ('ACTIVE', 'IDLE')
-  AND last_active_at < :cutoff
-FOR UPDATE SKIP LOCKED;
+  AND last_active_at < :cutoff;
 ```
 
-实际查询应区分 L1 和 L2。
+Demo 规则：
 
-### 8.2 分布式安全
-
-- 使用 PostgreSQL row lock 或 Redis lock；
-- lock value 包含 reaper instance id；
-- lock 有 TTL 和续租；
-- 状态转换使用 compare-and-set；
-- 多 Reaper 并发不能重复 checkpoint/unload；
-- 重试使用指数退避；
-- 每次运行有限 batch，避免长事务。
-
-### 8.3 重启恢复
-
-Reaper 启动时扫描中间状态：
-
-```text
-CHECKPOINTING
-UNLOADING
-CHECKPOINT_FAILED
-UNLOAD_FAILED
-```
-
-根据 checkpoint record 和 OpenClaw observed state 决定继续、回滚或重试。
+- 单次 run 只在一个 Control Plane 实例执行；
+- 使用 PostgreSQL 行锁或简单互斥，防止同一次 run 重复处理；
+- 每次处理有限 batch；
+- 失败记录原因，下一次 run 可重试；
+- 不设计多节点 leader election 或分布式 lease。
 
 ---
 
-## 9. 恢复算法
+## 9. 恢复流程
 
-收到新任务时：
+新任务到来时：
 
-1. 根据 `tenant_id + biz_domain` 获取 logical agent；
-2. 读取当前最新 tenant policy；
-3. 创建新的 Capability Snapshot；
-4. 如果已有健康 ACTIVE runtime，复用；
-5. 否则创建新 `runtime_instance_id`；
-6. 读取最后成功 checkpoint；
-7. 重建 workspace/Skill materialization；
-8. 创建/激活 OpenClaw Profile；
-9. 验证 observed `workspace/agentDir/skills/tools/sandbox`；
-10. 加载 Session Summary 和任务相关 Memory；
-11. 不加载完整历史 Transcript，除非显式诊断；
-12. 对未完成任务恢复 current_step；
-13. 重新签发 L2 Token；
-14. 写 `RESTORE_COMPLETED`；
-15. 设置 `restored_from_runtime_instance_id`。
+1. 根据 `tenant_id + biz_domain` 获取 logical L1；
+2. 如果已有健康 ACTIVE runtime，直接复用；
+3. 否则创建新的 `runtime_instance_id`；
+4. 读取当前 Tenant Capability Profile；
+5. 重建 workspace、agentDir 和 OpenClaw Profile；
+6. 读取最近 Session Summary；
+7. 读取当前 tenant/biz 下必要 Memory；
+8. 读取未完成 TaskState；
+9. 创建新 Session；
+10. 设置 `restored_from_runtime_instance_id`；
+11. 写 `RESTORE_COMPLETED` Trace；
+12. 设置 ACTIVE。
 
----
-
-## 10. 权限变化与恢复
-
-必须遵守：
-
-```text
-历史 Snapshot = 审计事实
-最新 Policy = 新运行授权事实
-```
-
-恢复时：
-
-- 不能直接重新使用旧 Snapshot 作为授权；
-- 重新解析最新 Policy；
-- 旧任务要求的能力被撤销时，任务进入 `BLOCKED_POLICY_CHANGED`；
-- 不能静默补回权限；
-- 记录新旧 Snapshot diff；
-- 等待业务方重新授权或取消任务。
+默认不加载完整历史 Transcript。
 
 ---
 
-## 11. 一致性和幂等
+## 10. 权限变化
 
-### 11.1 Outbox
+恢复时使用当前 Tenant Capability Profile，而不是无条件恢复旧权限。
 
-关键状态 + Trace/事件采用同事务 Outbox：
+如果未完成任务所需 Tool 已被移除：
 
-```text
-write state + outbox event in PostgreSQL transaction
-publisher asynchronously sends to MinIO/metrics/other consumers
-mark outbox delivered
-```
+- 任务标记为 `BLOCKED_CAPABILITY_CHANGED`；
+- 不自动补回权限；
+- Demo API 返回明确状态。
 
-### 11.2 checkpoint idempotency
-
-Checkpoint key：
-
-```text
-runtime_instance_id + session_id + checkpoint_sequence
-```
-
-重复执行返回同一 snapshot，不生成冲突对象。
-
-### 11.3 unload idempotency
-
-对已 DESTROYED 实例重复 unload 返回成功的当前状态，不报不可恢复错误。
+不需要实现 Snapshot diff、Token revoke 或权限审批流。
 
 ---
 
-## 12. 故障行为
+## 11. 最小一致性要求
 
-| 故障 | 必须行为 |
-|---|---|
-| PostgreSQL 不可用 | 不接收新任务，不卸载任何运行态 |
-| Redis 不可用 | 可降级到 PostgreSQL lock，或 readiness=false；不得无锁并发 ensure |
-| MinIO 不可用 | checkpoint 失败；保留运行态/任务状态，不标记完成归档 |
-| OpenClaw config reload 失败 | L1 不标记 ACTIVE，保留 last-known-good |
-| OpenClaw Gateway 重启 | 从 PostgreSQL reconciliation，不依赖旧 timer |
-| Control Plane 重启 | 恢复 Registry，reconcile observed profiles |
-| Tool Gateway 超时 | Task 进入可重试状态，Trace 记录，不重复写副作用 |
-| Token signing key 缺失 | readiness=false，拒绝任务 |
+Demo 只要求：
+
+- checkpoint 写入使用 PostgreSQL 事务；
+- 写成功后再卸载；
+- 同一 task checkpoint 重试不会生成冲突状态；
+- 已完成的 Mock Tool 写结果有唯一约束，恢复时不重复写；
+- 进程重启后可从 PostgreSQL 重建 Runtime cache。
+
+不实现 Outbox、消息发布、跨服务分布式事务或 exactly-once 平台。
 
 ---
 
-## 13. 生命周期验证必须使用测试时钟
+## 12. 生命周期测试
 
-测试时钟接口：
-
-```ts
-interface Clock {
-  now(): Date;
-}
-
-interface MutableTestClock extends Clock {
-  advance(durationMs: number): void;
-}
-```
-
-所有 TTL 逻辑只依赖注入的 `Clock`。禁止直接在领域服务调用 `Date.now()`。
-
-远端 E2E 通过 Admin test-clock：
+使用 fake clock 验证：
 
 ```text
-advance 3599s → L2 未归档
-advance 1s    → L2 成为候选并归档
-advance 86399s → L1 未卸载
-advance 1s     → L1 成为候选并卸载
+L2 TTL - 1 秒：不卸载
+L2 TTL：可卸载
+L1 TTL - 1 秒：不卸载
+L1 TTL：无活动 L2 时可卸载
 ```
 
-测试结束恢复时钟或重建 Demo 环境，避免污染后续场景。
+还必须验证：
+
+- 活动 L2 阻止 L1 unload；
+- checkpoint 持久化失败时保持非 UNLOADED；
+- unload 后 Session Summary、Memory、Trace 和 TaskState 仍存在；
+- 恢复后 logical ID 相同、runtime ID 不同；
+- 未完成 Task 可从保存的 current step 继续或明确返回可恢复状态。
+
+---
+
+## 13. 非目标
+
+第一版不实现：
+
+```text
+Redis lock/heartbeat
+MinIO Transcript 存储
+Outbox
+多 Reaper 协调
+分布式 CAS/lease
+跨区域恢复
+审计 hash chain
+```
+
+这些属于生产化阶段，不得阻塞 Demo。
