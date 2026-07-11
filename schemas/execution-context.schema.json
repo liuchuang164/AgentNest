@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentnest.example/schemas/execution-context.schema.json",
+  "title": "AgentNest Demo Execution Context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "execution_context_id",
+    "tenant_id",
+    "biz_domain",
+    "logical_agent_id",
+    "runtime_instance_id",
+    "session_id",
+    "task_id",
+    "allowed_skills",
+    "allowed_tools",
+    "resource_scope",
+    "expires_at"
+  ],
+  "properties": {
+    "execution_context_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "biz_domain": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "logical_agent_id": {
+      "type": "string",
+      "pattern": "^tb_[a-f0-9]{20}$"
+    },
+    "runtime_instance_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "allowed_skills": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "allowed_tools": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": { "type": "string", "minLength": 1 }
+      }
+    },
+    "resource_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_type", "resource_ids"],
+      "properties": {
+        "resource_type": { "type": "string", "minLength": 1 },
+        "resource_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
