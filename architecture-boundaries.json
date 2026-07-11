@@ -18,7 +18,7 @@
     },
     "@agentnest/tenant-runtime-plugin": {
       "path": "packages/tenant-runtime-plugin",
-      "allowedInternalDependencies": ["@agentnest/capability", "@agentnest/contracts"]
+      "allowedInternalDependencies": []
     },
     "@agentnest/test-support": {
       "path": "packages/test-support",

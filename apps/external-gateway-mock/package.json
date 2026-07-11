@@ -6,6 +6,8 @@
   "dependencies": {
     "@agentnest/capability": "workspace:*",
     "@agentnest/contracts": "workspace:*",
-    "@agentnest/persistence": "workspace:*"
+    "@agentnest/persistence": "workspace:*",
+    "@sinclair/typebox": "catalog:",
+    "fastify": "5.10.0"
   }
 }

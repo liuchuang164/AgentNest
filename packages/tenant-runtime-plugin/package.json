@@ -1,11 +1,39 @@
 {
   "name": "@agentnest/tenant-runtime-plugin",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "types": "./dist/index.d.ts",
+    "default": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "openclaw.plugin.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "openclaw": {
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "runtimeExtensions": [
+      "./dist/index.js"
+    ],
+    "install": {
+      "minHostVersion": "2026.6.11"
+    }
+  },
   "dependencies": {
-    "@agentnest/capability": "workspace:*",
-    "@agentnest/contracts": "workspace:*"
+    "typebox": "1.1.39"
+  },
+  "devDependencies": {
+    "openclaw": "2026.6.11"
+  },
+  "peerDependencies": {
+    "openclaw": "2026.6.11"
   }
 }

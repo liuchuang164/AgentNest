@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "phase": 4,
+  "status": "PASS_LOCAL",
+  "generated_at": "2026-07-11T17:53:18Z",
+  "branch": "codex/lean-demo",
+  "base_commit": "269f7fc45f2cd47ee7222d087193e0316337b6b0",
+  "runtime": {
+    "node": "v24.15.0",
+    "pnpm": "11.11.0"
+  },
+  "openclaw_plugin_sdk": {
+    "version": "2026.6.11",
+    "channel": "stable",
+    "build": "PASS",
+    "dist_import": "PASS"
+  },
+  "gate": {
+    "install_frozen": "PASS",
+    "format_check": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "unit": { "status": "PASS", "files": 14, "tests": 68, "plugin_tests": 11 },
+    "contract": { "status": "PASS", "files": 4, "tests": 15 },
+    "integration": { "status": "PASS", "files": 2, "tests": 16 },
+    "isolation": { "status": "PASS", "files": 1, "tests": 15 },
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "tools": {
+    "data_gateway": 4,
+    "external_gateway": 2,
+    "deterministic": true
+  },
+  "isolation": {
+    "cross_business": "PASS",
+    "cross_tenant": "PASS",
+    "action": "PASS",
+    "resource_ownership": "PASS",
+    "unknown_context": "PASS",
+    "expired_context": "PASS",
+    "deny_has_no_side_effect": "PASS",
+    "deny_trace_correlated": "PASS"
+  },
+  "deferred_to_phase_6": [
+    "real PostgreSQL migration and repository execution",
+    "remote composed Gateway services",
+    "real OpenClaw model-to-Mock-Tool chain"
+  ],
+  "external_blocker": {
+    "provider": "qwen",
+    "code": "Arrearage",
+    "affects_phase_4_local_gate": false
+  }
+}

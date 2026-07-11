@@ -1,0 +1,70 @@
+{
+  "id": "agentnest-tenant-runtime",
+  "name": "AgentNest Tenant Runtime",
+  "description": "Binds server-issued execution contexts to OpenClaw sessions and exposes scoped Demo business tools.",
+  "version": "0.1.0",
+  "activation": {
+    "onStartup": true,
+    "onCapabilities": ["tool"]
+  },
+  "contracts": {
+    "tools": [
+      "legal_case_read",
+      "legal_analysis_write",
+      "legal_research_query",
+      "robot_device_read",
+      "robot_health_write",
+      "robot_telemetry_enrich"
+    ]
+  },
+  "toolMetadata": {
+    "legal_case_read": { "optional": true },
+    "legal_analysis_write": { "optional": true },
+    "legal_research_query": { "optional": true },
+    "robot_device_read": { "optional": true },
+    "robot_health_write": { "optional": true },
+    "robot_telemetry_enrich": { "optional": true }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["dataGatewayUrl", "externalGatewayUrl", "agentScopes"],
+    "properties": {
+      "dataGatewayUrl": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "externalGatewayUrl": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "requestTimeoutMs": {
+        "type": "integer",
+        "minimum": 100,
+        "maximum": 30000,
+        "default": 5000
+      },
+      "agentScopes": {
+        "type": "object",
+        "minProperties": 1,
+        "propertyNames": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bizDomain"],
+          "properties": {
+            "bizDomain": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

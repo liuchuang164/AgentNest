@@ -52,13 +52,13 @@
 
 ## F. Tool 隔离
 
-- [ ] LEGAL 调 Robot Tool 被拒绝且无副作用。证据：
-- [ ] ROBOT_DOG 调 Legal Tool 被拒绝且无副作用。证据：
-- [ ] tenant_A context 读取 tenant_B 的 `case_001` 被拒绝。证据：
-- [ ] 未授权 action 被拒绝。证据：
-- [ ] 未知/过期 `execution_context_id` 被拒绝。证据：
-- [ ] body 伪造 tenant/biz 不能覆盖服务端 context。证据：
-- [ ] 每次拒绝都有 `DENY` Trace 和原因。证据：
+- [x] LEGAL 调 Robot Tool 被拒绝且无副作用。证据：`gateway-mocks.isolation.test.ts`、`artifacts/reports/phase-4-summary.md`
+- [x] ROBOT_DOG 调 Legal Tool 被拒绝且无副作用。证据：`gateway-mocks.isolation.test.ts`、`artifacts/reports/phase-4-summary.md`
+- [x] tenant_A context 读取 tenant_B 的 `case_001` 被拒绝。证据：body scope override 用例与 tenant-scoped fixture，`artifacts/reports/phase-4-summary.md`
+- [x] 未授权 action 被拒绝。证据：`gateway-mocks.isolation.test.ts`
+- [x] 未知/过期 `execution_context_id` 被拒绝。证据：`gateway-mocks.isolation.test.ts`
+- [x] body 伪造 tenant/biz 不能覆盖服务端 context。证据：Fastify strict schema 用例，`gateway-mocks.isolation.test.ts`
+- [x] 每次拒绝都有 `DENY` Trace 和原因。证据：15 条 isolation tests，`artifacts/reports/phase-4-summary.md`
 
 ## G. Skill 隔离
 
