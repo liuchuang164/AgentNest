@@ -15,13 +15,13 @@ describe("explicit agent state machines", () => {
     expect(isL1TransitionAllowed(L1RuntimeStatus.CHECKPOINTING, L1RuntimeStatus.UNLOADING)).toBe(
       true,
     );
-    expect(isL1TransitionAllowed(L1RuntimeStatus.UNLOADING, L1RuntimeStatus.DESTROYED)).toBe(true);
+    expect(isL1TransitionAllowed(L1RuntimeStatus.UNLOADING, L1RuntimeStatus.UNLOADED)).toBe(true);
   });
 
   it("forbids destroying an active L1 without checkpointing", () => {
-    expect(isL1TransitionAllowed(L1RuntimeStatus.ACTIVE, L1RuntimeStatus.DESTROYED)).toBe(false);
+    expect(isL1TransitionAllowed(L1RuntimeStatus.ACTIVE, L1RuntimeStatus.UNLOADED)).toBe(false);
     expect(() => {
-      assertL1Transition(L1RuntimeStatus.ACTIVE, L1RuntimeStatus.DESTROYED);
+      assertL1Transition(L1RuntimeStatus.ACTIVE, L1RuntimeStatus.UNLOADED);
     }).toThrow(InvalidStateTransitionError);
   });
 
@@ -29,9 +29,9 @@ describe("explicit agent state machines", () => {
     expect(
       isL1TransitionAllowed(L1RuntimeStatus.CHECKPOINTING, L1RuntimeStatus.CHECKPOINT_FAILED),
     ).toBe(true);
-    expect(
-      isL1TransitionAllowed(L1RuntimeStatus.CHECKPOINT_FAILED, L1RuntimeStatus.DESTROYED),
-    ).toBe(false);
+    expect(isL1TransitionAllowed(L1RuntimeStatus.CHECKPOINT_FAILED, L1RuntimeStatus.UNLOADED)).toBe(
+      false,
+    );
     expect(
       isL1TransitionAllowed(L1RuntimeStatus.CHECKPOINT_FAILED, L1RuntimeStatus.CHECKPOINTING),
     ).toBe(false);
@@ -44,11 +44,11 @@ describe("explicit agent state machines", () => {
     );
   });
 
-  it("requires L2 checkpoint before archive", () => {
+  it("requires L2 checkpoint before unload", () => {
     expect(isL2TransitionAllowed(L2TaskStatus.COMPLETED, L2TaskStatus.CHECKPOINTED)).toBe(true);
-    expect(isL2TransitionAllowed(L2TaskStatus.COMPLETED, L2TaskStatus.ARCHIVED)).toBe(false);
+    expect(isL2TransitionAllowed(L2TaskStatus.COMPLETED, L2TaskStatus.UNLOADED)).toBe(false);
     expect(() => {
-      assertL2Transition(L2TaskStatus.COMPLETED, L2TaskStatus.ARCHIVED);
+      assertL2Transition(L2TaskStatus.COMPLETED, L2TaskStatus.UNLOADED);
     }).toThrow(InvalidStateTransitionError);
   });
 

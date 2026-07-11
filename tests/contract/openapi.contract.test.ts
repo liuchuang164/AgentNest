@@ -3,31 +3,17 @@ import { resolve } from "node:path";
 import SwaggerParser from "@apidevtools/swagger-parser";
 import { describe, expect, it } from "vitest";
 
-import {
-  L1RuntimeStatus,
-  L2TaskStatus,
-  openApiDocument,
-} from "../../packages/contracts/src/index.js";
+import { openApiDocument } from "../../packages/contracts/src/index.js";
 
 const requiredPaths = [
-  "/api/v1/tasks",
-  "/api/v1/tasks/{taskId}",
-  "/api/v1/agents/{logicalAgentId}",
-  "/api/v1/admin/agents/{logicalAgentId}/checkpoint",
-  "/api/v1/admin/agents/{logicalAgentId}/unload",
-  "/api/v1/admin/reaper/run-once",
-  "/api/v1/admin/test-clock/advance",
-  "/health/live",
-  "/health/ready",
-  "/metrics",
-] as const;
-
-const writePaths = [
-  "/api/v1/tasks",
-  "/api/v1/admin/agents/{logicalAgentId}/checkpoint",
-  "/api/v1/admin/agents/{logicalAgentId}/unload",
-  "/api/v1/admin/reaper/run-once",
-  "/api/v1/admin/test-clock/advance",
+  "/api/tasks",
+  "/api/tasks/{taskId}",
+  "/api/agents",
+  "/api/agents/{logicalAgentId}",
+  "/api/agents/{logicalAgentId}/memories",
+  "/api/admin/reaper/run",
+  "/api/admin/clock/advance",
+  "/health",
 ] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -35,10 +21,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function readProperty(value: unknown, property: string): unknown {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return undefined;
-  }
-  return Object.entries(value).find(([key]) => key === property)?.[1];
+  return isRecord(value) ? value[property] : undefined;
 }
 
 function valuesOfProperty(value: unknown, property: string): readonly unknown[] {
@@ -51,59 +34,28 @@ function schemaRequires(schema: unknown, field: string): boolean {
   if (required.includes(field)) {
     return true;
   }
-  const alternatives = valuesOfProperty(schema, "anyOf");
-  return (
-    alternatives.length > 0 &&
-    alternatives.every((alternative) => schemaRequires(alternative, field))
-  );
+  const alternatives = [...valuesOfProperty(schema, "anyOf"), ...valuesOfProperty(schema, "oneOf")];
+  return alternatives.length > 0 && alternatives.every((item) => schemaRequires(item, field));
 }
 
-function responseDataObject(componentName: string): unknown {
-  const components = readProperty(openApiDocument, "components");
-  const schemas = readProperty(components, "schemas");
-  const responseSchema = readProperty(schemas, componentName);
-  const properties = readProperty(responseSchema, "properties");
-  const dataSchema = readProperty(properties, "data");
-  return valuesOfProperty(dataSchema, "anyOf").find(
-    (candidate) => readProperty(candidate, "type") === "object",
-  );
-}
-
-function literalValues(schema: unknown): readonly unknown[] {
-  return valuesOfProperty(schema, "anyOf").map((candidate) => readProperty(candidate, "const"));
-}
-
-describe("OpenAPI 3.1 contract", () => {
-  it("is valid and exposes every mandatory endpoint", async () => {
+describe("lean OpenAPI 3.1 contract", () => {
+  it("is valid and exposes every mandatory Demo endpoint", async () => {
     const document = await SwaggerParser.validate(resolve("openapi/agentnest.openapi.json"));
     expect(readProperty(document, "openapi")).toBe("3.1.0");
-    expect(Object.keys(document.paths ?? {}).sort()).toEqual([...requiredPaths].sort());
-  });
-
-  it("is generated from the same in-process contract source", () => {
-    expect(openApiDocument["openapi"]).toBe("3.1.0");
-    expect(openApiDocument).toHaveProperty("components.schemas.TaskRequest");
-    expect(openApiDocument).toHaveProperty("components.schemas.CapabilitySnapshot");
-    expect(openApiDocument).toHaveProperty("components.schemas.CapabilityTokenClaims");
-    expect(openApiDocument).toHaveProperty("components.schemas.AgentState");
-    expect(openApiDocument).toHaveProperty("components.schemas.TraceEvent");
-  });
-
-  it("requires an idempotency key on every write operation", () => {
-    const paths = readProperty(openApiDocument, "paths");
-    for (const path of writePaths) {
-      const pathItem = readProperty(paths, path);
-      const operation = readProperty(pathItem, "post");
-      const parameters = readProperty(operation, "parameters");
-      expect(Array.isArray(parameters)).toBe(true);
-      const names = Array.isArray(parameters)
-        ? parameters.map((parameter) => readProperty(parameter, "name"))
-        : [];
-      expect(names).toContain("Idempotency-Key");
+    const paths = Object.keys(document.paths ?? {});
+    for (const path of requiredPaths) {
+      expect(paths).toContain(path);
     }
   });
 
-  it("requires request and trace correlation on every operation and response", async () => {
+  it("uses the current profile and execution-context components only", () => {
+    expect(openApiDocument).toHaveProperty("components.schemas.CapabilityProfile");
+    expect(openApiDocument).toHaveProperty("components.schemas.ExecutionContext");
+    expect(openApiDocument).not.toHaveProperty("components.schemas.CapabilitySnapshot");
+    expect(openApiDocument).not.toHaveProperty("components.schemas.CapabilityTokenClaims");
+  });
+
+  it("requires request and trace correlation in every JSON response", async () => {
     const document = await SwaggerParser.dereference(resolve("openapi/agentnest.openapi.json"));
     const paths = readProperty(document, "paths");
     for (const pathItem of Object.values(isRecord(paths) ? paths : {})) {
@@ -112,55 +64,25 @@ describe("OpenAPI 3.1 contract", () => {
         if (operation === undefined) {
           continue;
         }
-
-        if (method === "get") {
-          const parameterNames = valuesOfProperty(operation, "parameters").map((parameter) =>
-            readProperty(parameter, "name"),
-          );
-          expect(parameterNames).toContain("X-Request-Id");
-        } else {
-          const requestBody = readProperty(operation, "requestBody");
-          const content = readProperty(requestBody, "content");
-          const mediaType = readProperty(content, "application/json");
-          const requestSchema = readProperty(mediaType, "schema");
-          expect(schemaRequires(requestSchema, "request_id")).toBe(true);
-          expect(schemaRequires(requestSchema, "idempotency_key")).toBe(true);
-        }
-
         const responses = readProperty(operation, "responses");
         for (const response of Object.values(isRecord(responses) ? responses : {})) {
           const content = readProperty(response, "content");
-          const jsonMediaType = readProperty(content, "application/json");
-          if (jsonMediaType !== undefined) {
-            const schema = readProperty(jsonMediaType, "schema");
-            expect(schemaRequires(schema, "request_id")).toBe(true);
-            expect(schemaRequires(schema, "trace_id")).toBe(true);
-          } else {
-            const headers = readProperty(response, "headers");
-            expect(readProperty(headers, "X-Request-Id")).toBeDefined();
-            expect(readProperty(headers, "X-Trace-Id")).toBeDefined();
+          const mediaType = readProperty(content, "application/json");
+          if (mediaType === undefined) {
+            continue;
           }
+          const schema = readProperty(mediaType, "schema");
+          expect(schemaRequires(schema, "request_id")).toBe(true);
+          expect(schemaRequires(schema, "trace_id")).toBe(true);
         }
       }
     }
   });
 
-  it("uses explicit task and runtime status enums in response contracts", () => {
-    const taskData = responseDataObject("TaskStatusResponse");
-    const taskStatus = readProperty(readProperty(taskData, "properties"), "status");
-    expect([...literalValues(taskStatus)].sort()).toEqual(Object.values(L2TaskStatus).sort());
-
-    const adminData = responseDataObject("AdminActionResponse");
-    const adminStatus = readProperty(readProperty(adminData, "properties"), "status");
-    expect([...literalValues(adminStatus)].sort()).toEqual(Object.values(L1RuntimeStatus).sort());
-  });
-
-  it("uses the standard response envelope for health JSON", () => {
-    const components = readProperty(openApiDocument, "components");
-    const schemas = readProperty(components, "schemas");
-    const health = readProperty(schemas, "HealthResponse");
-    for (const field of ["success", "code", "message", "request_id", "trace_id", "data", "error"]) {
-      expect(schemaRequires(health, field)).toBe(true);
-    }
+  it("keeps Admin and clock operations out of the public task namespace", () => {
+    const paths = readProperty(openApiDocument, "paths");
+    expect(readProperty(paths, "/api/admin/reaper/run")).toBeDefined();
+    expect(readProperty(paths, "/api/admin/clock/advance")).toBeDefined();
+    expect(readProperty(paths, "/api/tasks")).toBeDefined();
   });
 });

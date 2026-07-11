@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentnest.example/schemas/trace-event.schema.json",
   "title": "AgentNest Demo Trace Event",
-  "type": "object",
   "additionalProperties": false,
+  "type": "object",
   "required": [
     "schema_version",
     "event_id",
@@ -15,135 +15,246 @@
     "agent_id",
     "session_id",
     "task_id",
+    "execution_context_id",
     "event_type",
+    "decision",
+    "reason",
     "payload",
     "created_at"
   ],
   "properties": {
     "schema_version": {
-      "type": "string",
-      "const": "1.0"
+      "const": "1.0",
+      "type": "string"
     },
     "event_id": {
-      "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "type": "string"
     },
     "trace_id": {
-      "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "type": "string"
     },
     "tenant_id": {
-      "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "type": "string"
     },
     "biz_domain": {
-      "type": "string",
       "minLength": 1,
       "maxLength": 64,
-      "pattern": "^[A-Z][A-Z0-9_]*$"
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "type": "string"
     },
     "logical_agent_id": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 128
+      "anyOf": [
+        {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "runtime_instance_id": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 128
+      "anyOf": [
+        {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "agent_id": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 128
+      "anyOf": [
+        {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "session_id": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 128
+      "anyOf": [
+        {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "task_id": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 128
+      "anyOf": [
+        {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "execution_context_id": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "uuid"
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "event_type": {
-      "type": "string",
-      "enum": [
-        "REQUEST_ACCEPTED",
-        "L1_ENSURE_STARTED",
-        "L1_PROFILE_CREATED",
-        "L1_PROFILE_REUSED",
-        "L1_RESTORED",
-        "L2_SPAWN_REQUESTED",
-        "L2_SPAWNED",
-        "SKILL_SELECTED",
-        "EXECUTION_CONTEXT_CREATED",
-        "TOOL_CALL_REQUESTED",
-        "TOOL_CALL_ALLOWED",
-        "TOOL_CALL_DENIED",
-        "TOOL_CALL_COMPLETED",
-        "MEMORY_READ",
-        "MEMORY_WRITE",
-        "CHECKPOINT_STARTED",
-        "CHECKPOINT_COMPLETED",
-        "CHECKPOINT_FAILED",
-        "L2_UNLOADED",
-        "L1_UNLOAD_STARTED",
-        "L1_UNLOADED",
-        "RESTORE_STARTED",
-        "RESTORE_COMPLETED",
-        "CAPABILITY_PROFILE_CHANGED"
+      "anyOf": [
+        {
+          "const": "REQUEST_ACCEPTED",
+          "type": "string"
+        },
+        {
+          "const": "L1_ENSURE_STARTED",
+          "type": "string"
+        },
+        {
+          "const": "L1_PROFILE_CREATED",
+          "type": "string"
+        },
+        {
+          "const": "L1_PROFILE_REUSED",
+          "type": "string"
+        },
+        {
+          "const": "L1_RESTORED",
+          "type": "string"
+        },
+        {
+          "const": "L2_SPAWN_REQUESTED",
+          "type": "string"
+        },
+        {
+          "const": "L2_SPAWNED",
+          "type": "string"
+        },
+        {
+          "const": "SKILL_SELECTED",
+          "type": "string"
+        },
+        {
+          "const": "EXECUTION_CONTEXT_CREATED",
+          "type": "string"
+        },
+        {
+          "const": "TOOL_CALL_REQUESTED",
+          "type": "string"
+        },
+        {
+          "const": "TOOL_CALL_ALLOWED",
+          "type": "string"
+        },
+        {
+          "const": "TOOL_CALL_DENIED",
+          "type": "string"
+        },
+        {
+          "const": "TOOL_CALL_COMPLETED",
+          "type": "string"
+        },
+        {
+          "const": "MEMORY_READ",
+          "type": "string"
+        },
+        {
+          "const": "MEMORY_WRITE",
+          "type": "string"
+        },
+        {
+          "const": "CHECKPOINT_STARTED",
+          "type": "string"
+        },
+        {
+          "const": "CHECKPOINT_COMPLETED",
+          "type": "string"
+        },
+        {
+          "const": "CHECKPOINT_FAILED",
+          "type": "string"
+        },
+        {
+          "const": "L2_UNLOADED",
+          "type": "string"
+        },
+        {
+          "const": "L1_UNLOAD_STARTED",
+          "type": "string"
+        },
+        {
+          "const": "L1_UNLOADED",
+          "type": "string"
+        },
+        {
+          "const": "RESTORE_STARTED",
+          "type": "string"
+        },
+        {
+          "const": "RESTORE_COMPLETED",
+          "type": "string"
+        },
+        {
+          "const": "CAPABILITY_PROFILE_CHANGED",
+          "type": "string"
+        }
       ]
     },
     "decision": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "enum": [
-        "ALLOW",
-        "DENY",
-        null
+      "anyOf": [
+        {
+          "const": "ALLOW",
+          "type": "string"
+        },
+        {
+          "const": "DENY",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "reason": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 512
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "payload": {
-      "type": "object",
       "additionalProperties": false,
+      "type": "object",
       "patternProperties": {
         "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
       }
     },
     "created_at": {
-      "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "type": "string"
     }
   }
 }

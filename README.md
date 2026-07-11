@@ -15,7 +15,7 @@ AgentNest 是一个基于 **OpenClaw 官方最新稳定版**的三层多租户 A
 
 ## 当前实现状态
 
-Phase 1 的 pnpm monorepo、严格 TypeScript、同源 JSON Schema/OpenAPI 3.1、状态机、fake clock、CI 和 unit/contract Gate 已落地。真实执行证据见 [`artifacts/reports/phase-1-summary.md`](artifacts/reports/phase-1-summary.md)。Integration、OpenClaw、三层 E2E、远端部署与完整隔离验收仍属于后续阶段，当前不得把 Phase 1 结果解释为 Demo 完成。
+Phase 2 的精简 Tenant Capability Profile、任务能力交集、稳定 L1 逻辑 ID、PostgreSQL 权威 Profile/Runtime Registry adapter、进程内可重建 cache、三组 Demo seed 和路径约束已落地。真实执行证据见 [`artifacts/reports/phase-2-summary.md`](artifacts/reports/phase-2-summary.md)。本地环境没有 PostgreSQL/Docker，因此当前 adapter integration 使用协议兼容的 recording client；真实 PostgreSQL migration、OpenClaw 三层 E2E、生命周期和远端部署仍需在后续阶段验证，当前不得把 Phase 2 结果解释为 Demo 完成。
 
 ## OpenClaw 基线
 

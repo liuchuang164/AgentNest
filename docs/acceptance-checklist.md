@@ -5,14 +5,14 @@
 ## A. 构建
 
 
-- [x] `pnpm install --frozen-lockfile` 成功。证据：`artifacts/reports/phase-1-summary.md`
-- [x] lint 成功。证据：`artifacts/reports/phase-1-summary.md`
-- [x] TypeScript strict typecheck 成功。证据：`artifacts/reports/phase-1-summary.md`
-- [x] Unit tests 成功。证据：`artifacts/reports/phase-1-summary.md`（15/15）
-- [x] Contract tests 成功。证据：`artifacts/reports/phase-1-summary.md`（12/12）
-- [x] Integration tests 成功。证据：
-- [x] Secret scan 成功。证据：`artifacts/reports/phase-1-summary.md`
-- [x] OpenAPI 3.1 文件生成并校验。证据：`openapi/agentnest.openapi.json`、`artifacts/reports/phase-1-summary.md`
+- [x] `pnpm install --frozen-lockfile` 成功。证据：`artifacts/reports/phase-2-summary.md`
+- [x] lint 成功。证据：`artifacts/reports/phase-2-summary.md`
+- [x] TypeScript strict typecheck 成功。证据：`artifacts/reports/phase-2-summary.md`
+- [x] Unit tests 成功。证据：`artifacts/reports/phase-2-summary.md`（32/32）
+- [x] Contract tests 成功。证据：`artifacts/reports/phase-2-summary.md`（13/13）
+- [ ] 真实 PostgreSQL/Gateway Integration tests 成功。Phase 2 adapter integration 2/2 已通过，真实 PostgreSQL 证据待远端阶段补齐：`artifacts/reports/phase-2-summary.md`
+- [x] Secret scan 成功。证据：`artifacts/reports/phase-2-summary.md`
+- [x] OpenAPI 3.1 文件生成并校验。证据：`openapi/agentnest.openapi.json`、`artifacts/reports/phase-2-summary.md`
 
 ## B. OpenClaw
 

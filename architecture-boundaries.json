@@ -10,7 +10,7 @@
     },
     "@agentnest/persistence": {
       "path": "packages/persistence",
-      "allowedInternalDependencies": ["@agentnest/contracts"]
+      "allowedInternalDependencies": ["@agentnest/capability", "@agentnest/contracts"]
     },
     "@agentnest/openclaw-adapter": {
       "path": "packages/openclaw-adapter",

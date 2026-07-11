@@ -14,7 +14,7 @@
         "runtime_instance_id",
         "agent_id",
         "trace_id",
-        "capability_snapshot_id",
+        "capability_profile_id",
         "restored_from_runtime_instance_id",
         "last_active_at",
         "created_at",
@@ -59,7 +59,7 @@
           "maxLength": 128,
           "type": "string"
         },
-        "capability_snapshot_id": {
+        "capability_profile_id": {
           "minLength": 1,
           "maxLength": 128,
           "type": "string"
@@ -78,17 +78,14 @@
         },
         "last_active_at": {
           "format": "date-time",
-          "pattern": "Z$",
           "type": "string"
         },
         "created_at": {
           "format": "date-time",
-          "pattern": "Z$",
           "type": "string"
         },
         "updated_at": {
           "format": "date-time",
-          "pattern": "Z$",
           "type": "string"
         },
         "level": {
@@ -150,7 +147,7 @@
               "type": "string"
             },
             {
-              "const": "DESTROYED",
+              "const": "UNLOADED",
               "type": "string"
             },
             {
@@ -172,7 +169,7 @@
         "runtime_instance_id",
         "agent_id",
         "trace_id",
-        "capability_snapshot_id",
+        "capability_profile_id",
         "restored_from_runtime_instance_id",
         "last_active_at",
         "created_at",
@@ -217,7 +214,7 @@
           "maxLength": 128,
           "type": "string"
         },
-        "capability_snapshot_id": {
+        "capability_profile_id": {
           "minLength": 1,
           "maxLength": 128,
           "type": "string"
@@ -236,17 +233,14 @@
         },
         "last_active_at": {
           "format": "date-time",
-          "pattern": "Z$",
           "type": "string"
         },
         "created_at": {
           "format": "date-time",
-          "pattern": "Z$",
           "type": "string"
         },
         "updated_at": {
           "format": "date-time",
-          "pattern": "Z$",
           "type": "string"
         },
         "level": {
@@ -278,10 +272,6 @@
               "type": "string"
             },
             {
-              "const": "WAITING_TOOL",
-              "type": "string"
-            },
-            {
               "const": "WAITING_INPUT",
               "type": "string"
             },
@@ -294,15 +284,11 @@
               "type": "string"
             },
             {
-              "const": "CANCELLED",
-              "type": "string"
-            },
-            {
               "const": "CHECKPOINTED",
               "type": "string"
             },
             {
-              "const": "ARCHIVED",
+              "const": "UNLOADED",
               "type": "string"
             }
           ]

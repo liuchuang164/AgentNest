@@ -92,7 +92,15 @@ for (const path of repositoryFiles) {
     continue;
   }
 
-  const stat = await lstat(path);
+  let stat: Awaited<ReturnType<typeof lstat>>;
+  try {
+    stat = await lstat(path);
+  } catch (error: unknown) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      continue;
+    }
+    throw error;
+  }
   if (stat.isSymbolicLink()) {
     violations.push({ path, rule: "tracked-symlink" });
     continue;

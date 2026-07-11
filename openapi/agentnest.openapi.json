@@ -3,52 +3,18 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "AgentNest Control Plane API",
-    "version": "0.1.0",
-    "description": "Tenant and business scoped control-plane contract for the AgentNest demo."
+    "version": "0.2.0",
+    "description": "Lean tenant and business scoped AgentNest demo API."
   },
   "servers": [
     {
       "url": "http://127.0.0.1:18080"
     }
   ],
-  "tags": [
-    {
-      "name": "tasks"
-    },
-    {
-      "name": "agents"
-    },
-    {
-      "name": "admin"
-    },
-    {
-      "name": "health"
-    }
-  ],
   "paths": {
-    "/api/v1/tasks": {
+    "/api/tasks": {
       "post": {
         "operationId": "submitTask",
-        "tags": [
-          "tasks"
-        ],
-        "security": [
-          {
-            "DemoBearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 8,
-              "maxLength": 256
-            }
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -90,18 +56,8 @@
               }
             }
           },
-          "401": {
-            "description": "Authentication required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardErrorResponse"
-                }
-              }
-            }
-          },
           "403": {
-            "description": "Capability denied",
+            "description": "Scope denied",
             "content": {
               "application/json": {
                 "schema": {
@@ -123,17 +79,9 @@
         }
       }
     },
-    "/api/v1/tasks/{taskId}": {
+    "/api/tasks/{taskId}": {
       "get": {
         "operationId": "getTask",
-        "tags": [
-          "tasks"
-        ],
-        "security": [
-          {
-            "DemoBearerAuth": []
-          }
-        ],
         "parameters": [
           {
             "name": "X-Request-Id",
@@ -177,18 +125,8 @@
               }
             }
           },
-          "401": {
-            "description": "Authentication required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardErrorResponse"
-                }
-              }
-            }
-          },
           "403": {
-            "description": "Capability denied",
+            "description": "Scope denied",
             "content": {
               "application/json": {
                 "schema": {
@@ -210,17 +148,68 @@
         }
       }
     },
-    "/api/v1/agents/{logicalAgentId}": {
+    "/api/agents": {
       "get": {
-        "operationId": "getAgent",
-        "tags": [
-          "agents"
-        ],
-        "security": [
+        "operationId": "listAgents",
+        "parameters": [
           {
-            "DemoBearerAuth": []
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents/{logicalAgentId}": {
+      "get": {
+        "operationId": "getAgent",
         "parameters": [
           {
             "name": "X-Request-Id",
@@ -237,8 +226,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "pattern": "^tb_[a-f0-9]{20}$"
+              "pattern": "^tb_[a-f0-9]{20}$",
+              "type": "string"
             }
           }
         ],
@@ -263,18 +252,8 @@
               }
             }
           },
-          "401": {
-            "description": "Authentication required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardErrorResponse"
-                }
-              }
-            }
-          },
           "403": {
-            "description": "Capability denied",
+            "description": "Scope denied",
             "content": {
               "application/json": {
                 "schema": {
@@ -296,35 +275,85 @@
         }
       }
     },
-    "/api/v1/admin/agents/{logicalAgentId}/checkpoint": {
+    "/api/agents/{logicalAgentId}/memories": {
+      "get": {
+        "operationId": "listAgentMemories",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "logicalAgentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^tb_[a-f0-9]{20}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/agents/{logicalAgentId}/checkpoint": {
       "post": {
         "operationId": "checkpointAgent",
-        "tags": [
-          "admin"
-        ],
-        "security": [
-          {
-            "AdminBearerAuth": []
-          }
-        ],
         "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 8,
-              "maxLength": 256
-            }
-          },
           {
             "name": "logicalAgentId",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "pattern": "^tb_[a-f0-9]{20}$"
+              "pattern": "^tb_[a-f0-9]{20}$",
+              "type": "string"
             }
           }
         ],
@@ -333,12 +362,10 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": false,
+                "type": "object",
                 "required": [
-                  "request_id",
-                  "idempotency_key",
-                  "reason"
+                  "request_id"
                 ],
                 "properties": {
                   "request_id": {
@@ -347,14 +374,9 @@
                     "type": "string"
                   },
                   "idempotency_key": {
-                    "type": "string",
-                    "minLength": 8,
-                    "maxLength": 256
-                  },
-                  "reason": {
-                    "type": "string",
                     "minLength": 1,
-                    "maxLength": 256
+                    "maxLength": 256,
+                    "type": "string"
                   }
                 }
               }
@@ -382,18 +404,8 @@
               }
             }
           },
-          "401": {
-            "description": "Authentication required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardErrorResponse"
-                }
-              }
-            }
-          },
           "403": {
-            "description": "Capability denied",
+            "description": "Scope denied",
             "content": {
               "application/json": {
                 "schema": {
@@ -415,35 +427,17 @@
         }
       }
     },
-    "/api/v1/admin/agents/{logicalAgentId}/unload": {
+    "/api/admin/agents/{logicalAgentId}/unload": {
       "post": {
         "operationId": "unloadAgent",
-        "tags": [
-          "admin"
-        ],
-        "security": [
-          {
-            "AdminBearerAuth": []
-          }
-        ],
         "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 8,
-              "maxLength": 256
-            }
-          },
           {
             "name": "logicalAgentId",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "pattern": "^tb_[a-f0-9]{20}$"
+              "pattern": "^tb_[a-f0-9]{20}$",
+              "type": "string"
             }
           }
         ],
@@ -452,13 +446,10 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": false,
+                "type": "object",
                 "required": [
-                  "request_id",
-                  "idempotency_key",
-                  "reason",
-                  "force"
+                  "request_id"
                 ],
                 "properties": {
                   "request_id": {
@@ -467,18 +458,9 @@
                     "type": "string"
                   },
                   "idempotency_key": {
-                    "type": "string",
-                    "minLength": 8,
-                    "maxLength": 256
-                  },
-                  "reason": {
-                    "type": "string",
                     "minLength": 1,
-                    "maxLength": 256
-                  },
-                  "force": {
-                    "type": "boolean",
-                    "const": false
+                    "maxLength": 256,
+                    "type": "string"
                   }
                 }
               }
@@ -506,18 +488,8 @@
               }
             }
           },
-          "401": {
-            "description": "Authentication required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardErrorResponse"
-                }
-              }
-            }
-          },
           "403": {
-            "description": "Capability denied",
+            "description": "Scope denied",
             "content": {
               "application/json": {
                 "schema": {
@@ -539,39 +511,18 @@
         }
       }
     },
-    "/api/v1/admin/reaper/run-once": {
+    "/api/admin/reaper/run": {
       "post": {
-        "operationId": "runReaperOnce",
-        "tags": [
-          "admin"
-        ],
-        "security": [
-          {
-            "AdminBearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 8,
-              "maxLength": 256
-            }
-          }
-        ],
+        "operationId": "runReaper",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": false,
+                "type": "object",
                 "required": [
-                  "request_id",
-                  "idempotency_key"
+                  "request_id"
                 ],
                 "properties": {
                   "request_id": {
@@ -580,9 +531,9 @@
                     "type": "string"
                   },
                   "idempotency_key": {
-                    "type": "string",
-                    "minLength": 8,
-                    "maxLength": 256
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "type": "string"
                   }
                 }
               }
@@ -610,18 +561,8 @@
               }
             }
           },
-          "401": {
-            "description": "Authentication required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardErrorResponse"
-                }
-              }
-            }
-          },
           "403": {
-            "description": "Capability denied",
+            "description": "Scope denied",
             "content": {
               "application/json": {
                 "schema": {
@@ -643,36 +584,38 @@
         }
       }
     },
-    "/api/v1/admin/test-clock/advance": {
+    "/api/admin/clock/advance": {
       "post": {
-        "operationId": "advanceTestClock",
+        "operationId": "advanceDemoClock",
         "description": "Available only in test or demo profiles on loopback/private bindings.",
-        "tags": [
-          "admin"
-        ],
-        "security": [
-          {
-            "AdminBearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 8,
-              "maxLength": 256
-            }
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ClockAdvanceRequest"
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "request_id",
+                  "seconds"
+                ],
+                "properties": {
+                  "request_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "idempotency_key": {
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "seconds": {
+                    "minimum": 0,
+                    "maximum": 604800,
+                    "type": "integer"
+                  }
+                }
               }
             }
           }
@@ -698,18 +641,8 @@
               }
             }
           },
-          "401": {
-            "description": "Authentication required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardErrorResponse"
-                }
-              }
-            }
-          },
           "403": {
-            "description": "Capability denied",
+            "description": "Scope denied",
             "content": {
               "application/json": {
                 "schema": {
@@ -731,12 +664,9 @@
         }
       }
     },
-    "/health/live": {
+    "/health": {
       "get": {
-        "operationId": "getLiveness",
-        "tags": [
-          "health"
-        ],
+        "operationId": "getHealth",
         "parameters": [
           {
             "name": "X-Request-Id",
@@ -751,39 +681,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Process is alive",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/health/ready": {
-      "get": {
-        "operationId": "getReadiness",
-        "tags": [
-          "health"
-        ],
-        "parameters": [
-          {
-            "name": "X-Request-Id",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "minLength": 1,
-              "maxLength": 128,
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Dependencies are ready",
+            "description": "Successful request",
             "content": {
               "application/json": {
                 "schema": {
@@ -792,60 +690,32 @@
               }
             }
           },
-          "503": {
-            "description": "A required dependency is unavailable",
+          "400": {
+            "description": "Invalid request",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
+                  "$ref": "#/components/schemas/StandardErrorResponse"
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/metrics": {
-      "get": {
-        "operationId": "getMetrics",
-        "tags": [
-          "health"
-        ],
-        "parameters": [
-          {
-            "name": "X-Request-Id",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "minLength": 1,
-              "maxLength": 128,
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Prometheus text exposition",
-            "headers": {
-              "X-Request-Id": {
-                "schema": {
-                  "minLength": 1,
-                  "maxLength": 128,
-                  "type": "string"
-                }
-              },
-              "X-Trace-Id": {
-                "schema": {
-                  "minLength": 1,
-                  "maxLength": 128,
-                  "type": "string"
-                }
-              }
-            },
+          },
+          "403": {
+            "description": "Scope denied",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
                 }
               }
             }
@@ -855,32 +725,18 @@
     }
   },
   "components": {
-    "securitySchemes": {
-      "DemoBearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
-      },
-      "AdminBearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
-      }
-    },
     "schemas": {
       "TaskRequest": {
         "$id": "https://agentnest.example/schemas/task-request.schema.json",
-        "title": "AgentNest Task Request",
+        "title": "AgentNest Demo Task Request",
         "anyOf": [
           {
             "additionalProperties": false,
             "type": "object",
             "required": [
               "request_id",
-              "idempotency_key",
               "tenant_id",
-              "user_id",
-              "role",
               "input",
-              "execution",
               "biz_domain",
               "task_type",
               "resource"
@@ -892,7 +748,7 @@
                 "type": "string"
               },
               "idempotency_key": {
-                "minLength": 8,
+                "minLength": 1,
                 "maxLength": 256,
                 "type": "string"
               },
@@ -906,55 +762,12 @@
                 "maxLength": 128,
                 "type": "string"
               },
-              "role": {
-                "minLength": 1,
-                "maxLength": 64,
-                "type": "string"
-              },
               "input": {
-                "maxProperties": 50,
                 "additionalProperties": false,
+                "maxProperties": 50,
                 "type": "object",
                 "patternProperties": {
                   "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
-                }
-              },
-              "execution": {
-                "additionalProperties": false,
-                "type": "object",
-                "required": [
-                  "async",
-                  "model",
-                  "thinking"
-                ],
-                "properties": {
-                  "async": {
-                    "type": "boolean"
-                  },
-                  "model": {
-                    "anyOf": [
-                      {
-                        "minLength": 1,
-                        "maxLength": 256,
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "thinking": {
-                    "anyOf": [
-                      {
-                        "minLength": 1,
-                        "maxLength": 64,
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
                 }
               },
               "biz_domain": {
@@ -991,12 +804,8 @@
             "type": "object",
             "required": [
               "request_id",
-              "idempotency_key",
               "tenant_id",
-              "user_id",
-              "role",
               "input",
-              "execution",
               "biz_domain",
               "task_type",
               "resource"
@@ -1008,7 +817,7 @@
                 "type": "string"
               },
               "idempotency_key": {
-                "minLength": 8,
+                "minLength": 1,
                 "maxLength": 256,
                 "type": "string"
               },
@@ -1022,55 +831,12 @@
                 "maxLength": 128,
                 "type": "string"
               },
-              "role": {
-                "minLength": 1,
-                "maxLength": 64,
-                "type": "string"
-              },
               "input": {
-                "maxProperties": 50,
                 "additionalProperties": false,
+                "maxProperties": 50,
                 "type": "object",
                 "patternProperties": {
                   "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
-                }
-              },
-              "execution": {
-                "additionalProperties": false,
-                "type": "object",
-                "required": [
-                  "async",
-                  "model",
-                  "thinking"
-                ],
-                "properties": {
-                  "async": {
-                    "type": "boolean"
-                  },
-                  "model": {
-                    "anyOf": [
-                      {
-                        "minLength": 1,
-                        "maxLength": 256,
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "thinking": {
-                    "anyOf": [
-                      {
-                        "minLength": 1,
-                        "maxLength": 64,
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
                 }
               },
               "biz_domain": {
@@ -1104,38 +870,29 @@
           }
         ]
       },
-      "CapabilitySnapshot": {
-        "$id": "https://agentnest.example/schemas/capability-snapshot.schema.json",
-        "title": "AgentNest Capability Snapshot",
+      "CapabilityProfile": {
+        "$id": "https://agentnest.example/schemas/capability-profile.schema.json",
+        "title": "AgentNest Demo Tenant Capability Profile",
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "snapshot_id",
-          "schema_version",
-          "policy_version",
+          "profile_id",
+          "version",
           "tenant_id",
           "biz_domain",
           "skills",
           "tools",
           "memory_scopes",
-          "data_scopes",
-          "sandbox_policy",
-          "model_policy",
-          "lifecycle_policy",
-          "created_at",
-          "hash"
+          "lifecycle",
+          "created_at"
         ],
         "properties": {
-          "snapshot_id": {
+          "profile_id": {
             "minLength": 1,
             "maxLength": 128,
             "type": "string"
           },
-          "schema_version": {
-            "const": "1.0",
-            "type": "string"
-          },
-          "policy_version": {
+          "version": {
             "minimum": 1,
             "type": "integer"
           },
@@ -1154,77 +911,24 @@
             "uniqueItems": true,
             "type": "array",
             "items": {
-              "additionalProperties": false,
-              "type": "object",
-              "required": [
-                "name",
-                "version",
-                "content_hash"
-              ],
-              "properties": {
-                "name": {
-                  "minLength": 1,
-                  "maxLength": 128,
-                  "type": "string"
-                },
-                "version": {
-                  "minLength": 1,
-                  "maxLength": 64,
-                  "type": "string"
-                },
-                "content_hash": {
-                  "pattern": "^sha256:[a-f0-9]{64}$",
-                  "type": "string"
-                }
-              }
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
             }
           },
           "tools": {
-            "uniqueItems": true,
-            "type": "array",
-            "items": {
-              "additionalProperties": false,
-              "type": "object",
-              "required": [
-                "name",
-                "actions",
-                "constraints"
-              ],
-              "properties": {
-                "name": {
-                  "minLength": 3,
-                  "maxLength": 128,
-                  "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$",
+            "additionalProperties": false,
+            "type": "object",
+            "patternProperties": {
+              "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$": {
+                "minItems": 1,
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[a-z][a-z0-9._-]*$",
                   "type": "string"
-                },
-                "actions": {
-                  "minItems": 1,
-                  "uniqueItems": true,
-                  "type": "array",
-                  "items": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "pattern": "^[a-z][a-z0-9._-]*$",
-                    "type": "string"
-                  }
-                },
-                "constraints": {
-                  "additionalProperties": false,
-                  "type": "object",
-                  "required": [
-                    "resource_types"
-                  ],
-                  "properties": {
-                    "resource_types": {
-                      "uniqueItems": true,
-                      "type": "array",
-                      "items": {
-                        "minLength": 1,
-                        "maxLength": 64,
-                        "type": "string"
-                      }
-                    }
-                  }
                 }
               }
             }
@@ -1233,138 +937,12 @@
             "uniqueItems": true,
             "type": "array",
             "items": {
-              "additionalProperties": false,
-              "type": "object",
-              "required": [
-                "type",
-                "resource_type",
-                "access"
-              ],
-              "properties": {
-                "type": {
-                  "minLength": 1,
-                  "maxLength": 64,
-                  "type": "string"
-                },
-                "resource_type": {
-                  "anyOf": [
-                    {
-                      "minLength": 1,
-                      "maxLength": 64,
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "access": {
-                  "minItems": 1,
-                  "uniqueItems": true,
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "const": "read",
-                        "type": "string"
-                      },
-                      {
-                        "const": "write",
-                        "type": "string"
-                      }
-                    ]
-                  }
-                }
-              }
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
             }
           },
-          "data_scopes": {
-            "uniqueItems": true,
-            "type": "array",
-            "items": {
-              "additionalProperties": false,
-              "type": "object",
-              "required": [
-                "resource_type",
-                "operations"
-              ],
-              "properties": {
-                "resource_type": {
-                  "minLength": 1,
-                  "maxLength": 64,
-                  "type": "string"
-                },
-                "operations": {
-                  "minItems": 1,
-                  "uniqueItems": true,
-                  "type": "array",
-                  "items": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "pattern": "^[a-z][a-z0-9._-]*$",
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          "sandbox_policy": {
-            "additionalProperties": false,
-            "type": "object",
-            "required": [
-              "mode",
-              "scope",
-              "exec_allowed"
-            ],
-            "properties": {
-              "mode": {
-                "const": "all",
-                "type": "string"
-              },
-              "scope": {
-                "const": "agent",
-                "type": "string"
-              },
-              "exec_allowed": {
-                "type": "boolean"
-              }
-            }
-          },
-          "model_policy": {
-            "additionalProperties": false,
-            "type": "object",
-            "required": [
-              "providers",
-              "models",
-              "allow_user_override"
-            ],
-            "properties": {
-              "providers": {
-                "minItems": 1,
-                "uniqueItems": true,
-                "type": "array",
-                "items": {
-                  "minLength": 1,
-                  "maxLength": 64,
-                  "type": "string"
-                }
-              },
-              "models": {
-                "minItems": 1,
-                "uniqueItems": true,
-                "type": "array",
-                "items": {
-                  "minLength": 1,
-                  "maxLength": 256,
-                  "type": "string"
-                }
-              },
-              "allow_user_override": {
-                "type": "boolean"
-              }
-            }
-          },
-          "lifecycle_policy": {
+          "lifecycle": {
             "additionalProperties": false,
             "type": "object",
             "required": [
@@ -1390,76 +968,31 @@
           },
           "created_at": {
             "format": "date-time",
-            "pattern": "Z$",
-            "type": "string"
-          },
-          "hash": {
-            "pattern": "^sha256:[a-f0-9]{64}$",
             "type": "string"
           }
         }
       },
-      "CapabilityTokenClaims": {
-        "$id": "https://agentnest.example/schemas/capability-token-claims.schema.json",
-        "title": "AgentNest L2 Capability Token Claims",
+      "ExecutionContext": {
+        "$id": "https://agentnest.example/schemas/execution-context.schema.json",
+        "title": "AgentNest Demo Execution Context",
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "iss",
-          "aud",
-          "jti",
-          "parent_jti",
-          "snapshot_id",
+          "execution_context_id",
           "tenant_id",
           "biz_domain",
           "logical_agent_id",
           "runtime_instance_id",
-          "agent_id",
           "session_id",
           "task_id",
-          "tools",
-          "memory_scope",
-          "data_scope",
-          "iat",
-          "nbf",
-          "exp",
-          "nonce"
+          "allowed_skills",
+          "allowed_tools",
+          "resource_scope",
+          "expires_at"
         ],
         "properties": {
-          "iss": {
-            "const": "agentnest-control-plane",
-            "type": "string"
-          },
-          "aud": {
-            "minItems": 1,
-            "uniqueItems": true,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "const": "data-gateway",
-                  "type": "string"
-                },
-                {
-                  "const": "external-gateway",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "jti": {
-            "minLength": 1,
-            "maxLength": 128,
-            "type": "string"
-          },
-          "parent_jti": {
-            "minLength": 1,
-            "maxLength": 128,
-            "type": "string"
-          },
-          "snapshot_id": {
-            "minLength": 1,
-            "maxLength": 128,
+          "execution_context_id": {
+            "format": "uuid",
             "type": "string"
           },
           "tenant_id": {
@@ -1482,11 +1015,6 @@
             "maxLength": 128,
             "type": "string"
           },
-          "agent_id": {
-            "minLength": 1,
-            "maxLength": 128,
-            "type": "string"
-          },
           "session_id": {
             "minLength": 1,
             "maxLength": 128,
@@ -1497,8 +1025,16 @@
             "maxLength": 128,
             "type": "string"
           },
-          "tools": {
-            "minProperties": 1,
+          "allowed_skills": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          "allowed_tools": {
             "additionalProperties": false,
             "type": "object",
             "patternProperties": {
@@ -1515,7 +1051,7 @@
               }
             }
           },
-          "memory_scope": {
+          "resource_scope": {
             "additionalProperties": false,
             "type": "object",
             "required": [
@@ -1524,18 +1060,12 @@
             ],
             "properties": {
               "resource_type": {
-                "anyOf": [
-                  {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
+                "minLength": 1,
+                "maxLength": 64,
+                "type": "string"
               },
               "resource_ids": {
+                "minItems": 1,
                 "uniqueItems": true,
                 "type": "array",
                 "items": {
@@ -1546,52 +1076,8 @@
               }
             }
           },
-          "data_scope": {
-            "additionalProperties": false,
-            "type": "object",
-            "required": [
-              "resource_type",
-              "resource_ids"
-            ],
-            "properties": {
-              "resource_type": {
-                "anyOf": [
-                  {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "resource_ids": {
-                "uniqueItems": true,
-                "type": "array",
-                "items": {
-                  "minLength": 1,
-                  "maxLength": 128,
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "iat": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "nbf": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "exp": {
-            "minimum": 1,
-            "type": "integer"
-          },
-          "nonce": {
-            "minLength": 16,
-            "maxLength": 256,
+          "expires_at": {
+            "format": "date-time",
             "type": "string"
           }
         }
@@ -1611,7 +1097,7 @@
               "runtime_instance_id",
               "agent_id",
               "trace_id",
-              "capability_snapshot_id",
+              "capability_profile_id",
               "restored_from_runtime_instance_id",
               "last_active_at",
               "created_at",
@@ -1656,7 +1142,7 @@
                 "maxLength": 128,
                 "type": "string"
               },
-              "capability_snapshot_id": {
+              "capability_profile_id": {
                 "minLength": 1,
                 "maxLength": 128,
                 "type": "string"
@@ -1675,17 +1161,14 @@
               },
               "last_active_at": {
                 "format": "date-time",
-                "pattern": "Z$",
                 "type": "string"
               },
               "created_at": {
                 "format": "date-time",
-                "pattern": "Z$",
                 "type": "string"
               },
               "updated_at": {
                 "format": "date-time",
-                "pattern": "Z$",
                 "type": "string"
               },
               "level": {
@@ -1747,7 +1230,7 @@
                     "type": "string"
                   },
                   {
-                    "const": "DESTROYED",
+                    "const": "UNLOADED",
                     "type": "string"
                   },
                   {
@@ -1769,7 +1252,7 @@
               "runtime_instance_id",
               "agent_id",
               "trace_id",
-              "capability_snapshot_id",
+              "capability_profile_id",
               "restored_from_runtime_instance_id",
               "last_active_at",
               "created_at",
@@ -1814,7 +1297,7 @@
                 "maxLength": 128,
                 "type": "string"
               },
-              "capability_snapshot_id": {
+              "capability_profile_id": {
                 "minLength": 1,
                 "maxLength": 128,
                 "type": "string"
@@ -1833,17 +1316,14 @@
               },
               "last_active_at": {
                 "format": "date-time",
-                "pattern": "Z$",
                 "type": "string"
               },
               "created_at": {
                 "format": "date-time",
-                "pattern": "Z$",
                 "type": "string"
               },
               "updated_at": {
                 "format": "date-time",
-                "pattern": "Z$",
                 "type": "string"
               },
               "level": {
@@ -1875,10 +1355,6 @@
                     "type": "string"
                   },
                   {
-                    "const": "WAITING_TOOL",
-                    "type": "string"
-                  },
-                  {
                     "const": "WAITING_INPUT",
                     "type": "string"
                   },
@@ -1891,15 +1367,11 @@
                     "type": "string"
                   },
                   {
-                    "const": "CANCELLED",
-                    "type": "string"
-                  },
-                  {
                     "const": "CHECKPOINTED",
                     "type": "string"
                   },
                   {
-                    "const": "ARCHIVED",
+                    "const": "UNLOADED",
                     "type": "string"
                   }
                 ]
@@ -1910,7 +1382,7 @@
       },
       "TraceEvent": {
         "$id": "https://agentnest.example/schemas/trace-event.schema.json",
-        "title": "AgentNest Trace Event",
+        "title": "AgentNest Demo Trace Event",
         "additionalProperties": false,
         "type": "object",
         "required": [
@@ -1924,12 +1396,11 @@
           "agent_id",
           "session_id",
           "task_id",
-          "capability_snapshot_id",
+          "execution_context_id",
           "event_type",
+          "decision",
+          "reason",
           "payload",
-          "previous_hash",
-          "event_hash",
-          "timestamp",
           "created_at"
         ],
         "properties": {
@@ -1948,29 +1419,15 @@
             "type": "string"
           },
           "tenant_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "maxLength": 128,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
           },
           "biz_domain": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "maxLength": 64,
-                "pattern": "^[A-Z][A-Z0-9_]*$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Z][A-Z0-9_]*$",
+            "type": "string"
           },
           "logical_agent_id": {
             "anyOf": [
@@ -2032,11 +1489,10 @@
               }
             ]
           },
-          "capability_snapshot_id": {
+          "execution_context_id": {
             "anyOf": [
               {
-                "minLength": 1,
-                "maxLength": 128,
+                "format": "uuid",
                 "type": "string"
               },
               {
@@ -2079,6 +1535,10 @@
                 "type": "string"
               },
               {
+                "const": "EXECUTION_CONTEXT_CREATED",
+                "type": "string"
+              },
+              {
                 "const": "TOOL_CALL_REQUESTED",
                 "type": "string"
               },
@@ -2115,7 +1575,7 @@
                 "type": "string"
               },
               {
-                "const": "L2_ARCHIVED",
+                "const": "L2_UNLOADED",
                 "type": "string"
               },
               {
@@ -2135,16 +1595,34 @@
                 "type": "string"
               },
               {
-                "const": "POLICY_CHANGED",
+                "const": "CAPABILITY_PROFILE_CHANGED",
+                "type": "string"
+              }
+            ]
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "const": "ALLOW",
                 "type": "string"
               },
               {
-                "const": "TOKEN_ISSUED",
+                "const": "DENY",
                 "type": "string"
               },
               {
-                "const": "TOKEN_REJECTED",
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 512,
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -2155,36 +1633,8 @@
               "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
             }
           },
-          "previous_hash": {
-            "anyOf": [
-              {
-                "pattern": "^sha256:[a-f0-9]{64}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "event_hash": {
-            "anyOf": [
-              {
-                "pattern": "^sha256:[a-f0-9]{64}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "timestamp": {
-            "format": "date-time",
-            "pattern": "Z$",
-            "type": "string"
-          },
           "created_at": {
             "format": "date-time",
-            "pattern": "Z$",
             "type": "string"
           }
         }
@@ -2233,6 +1683,7 @@
                   "task_id",
                   "logical_agent_id",
                   "runtime_instance_id",
+                  "l2_agent_id",
                   "status"
                 ],
                 "properties": {
@@ -2250,9 +1701,53 @@
                     "maxLength": 128,
                     "type": "string"
                   },
+                  "l2_agent_id": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "status": {
-                    "const": "QUEUED",
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "const": "QUEUED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "SPAWNING",
+                        "type": "string"
+                      },
+                      {
+                        "const": "RUNNING",
+                        "type": "string"
+                      },
+                      {
+                        "const": "WAITING_INPUT",
+                        "type": "string"
+                      },
+                      {
+                        "const": "COMPLETED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "FAILED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "CHECKPOINTED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "UNLOADED",
+                        "type": "string"
+                      }
+                    ]
                   }
                 }
               },
@@ -2337,10 +1832,7 @@
                   "logical_agent_id",
                   "runtime_instance_id",
                   "l2_session_id",
-                  "current_step",
-                  "result",
-                  "created_at",
-                  "updated_at"
+                  "result"
                 ],
                 "properties": {
                   "task_id": {
@@ -2376,10 +1868,6 @@
                         "type": "string"
                       },
                       {
-                        "const": "WAITING_TOOL",
-                        "type": "string"
-                      },
-                      {
                         "const": "WAITING_INPUT",
                         "type": "string"
                       },
@@ -2392,15 +1880,11 @@
                         "type": "string"
                       },
                       {
-                        "const": "CANCELLED",
-                        "type": "string"
-                      },
-                      {
                         "const": "CHECKPOINTED",
                         "type": "string"
                       },
                       {
-                        "const": "ARCHIVED",
+                        "const": "UNLOADED",
                         "type": "string"
                       }
                     ]
@@ -2426,10 +1910,6 @@
                       }
                     ]
                   },
-                  "current_step": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
                   "result": {
                     "anyOf": [
                       {
@@ -2442,16 +1922,189 @@
                         "type": "null"
                       }
                     ]
-                  },
-                  "created_at": {
-                    "format": "date-time",
-                    "pattern": "Z$",
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "category",
+                  "retryable"
+                ],
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "maxLength": 64,
                     "type": "string"
                   },
-                  "updated_at": {
-                    "format": "date-time",
-                    "pattern": "Z$",
-                    "type": "string"
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "AgentListResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "request_id",
+          "trace_id",
+          "data",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "logical_agent_id",
+                    "tenant_id",
+                    "biz_domain",
+                    "status",
+                    "current_runtime_instance_id",
+                    "active_l2_count",
+                    "skills",
+                    "tools",
+                    "last_active_at"
+                  ],
+                  "properties": {
+                    "logical_agent_id": {
+                      "pattern": "^tb_[a-f0-9]{20}$",
+                      "type": "string"
+                    },
+                    "tenant_id": {
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "type": "string"
+                    },
+                    "biz_domain": {
+                      "pattern": "^[A-Z][A-Z0-9_]*$",
+                      "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "PROVISIONING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "ACTIVE",
+                          "type": "string"
+                        },
+                        {
+                          "const": "IDLE",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CHECKPOINTING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "CHECKPOINT_FAILED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "UNLOADING",
+                          "type": "string"
+                        },
+                        {
+                          "const": "UNLOAD_FAILED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "UNLOADED",
+                          "type": "string"
+                        },
+                        {
+                          "const": "FAILED",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "current_runtime_instance_id": {
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "maxLength": 128,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "active_l2_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "skills": {
+                      "uniqueItems": true,
+                      "type": "array",
+                      "items": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "tools": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^(.*)$": {
+                          "uniqueItems": true,
+                          "type": "array",
+                          "items": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "last_active_at": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
                   }
                 }
               },
@@ -2533,8 +2186,9 @@
                   "biz_domain",
                   "status",
                   "current_runtime_instance_id",
-                  "capability_snapshot_id",
                   "active_l2_count",
+                  "skills",
+                  "tools",
                   "last_active_at"
                 ],
                 "properties": {
@@ -2582,7 +2236,7 @@
                         "type": "string"
                       },
                       {
-                        "const": "DESTROYED",
+                        "const": "UNLOADED",
                         "type": "string"
                       },
                       {
@@ -2603,19 +2257,134 @@
                       }
                     ]
                   },
-                  "capability_snapshot_id": {
-                    "minLength": 1,
-                    "maxLength": 128,
-                    "type": "string"
-                  },
                   "active_l2_count": {
                     "minimum": 0,
                     "type": "integer"
                   },
+                  "skills": {
+                    "uniqueItems": true,
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "tools": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "uniqueItems": true,
+                        "type": "array",
+                        "items": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
                   "last_active_at": {
                     "format": "date-time",
-                    "pattern": "Z$",
                     "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "category",
+                  "retryable"
+                ],
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "MemoryListResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "request_id",
+          "trace_id",
+          "data",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "memory_id",
+                    "memory_type",
+                    "content",
+                    "created_at"
+                  ],
+                  "properties": {
+                    "memory_id": {
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "type": "string"
+                    },
+                    "memory_type": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
                   }
                 }
               },
@@ -2697,8 +2466,15 @@
                 ],
                 "properties": {
                   "logical_agent_id": {
-                    "pattern": "^tb_[a-f0-9]{20}$",
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "pattern": "^tb_[a-f0-9]{20}$",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "status": {
                     "anyOf": [
@@ -2731,11 +2507,15 @@
                         "type": "string"
                       },
                       {
-                        "const": "DESTROYED",
+                        "const": "UNLOADED",
                         "type": "string"
                       },
                       {
                         "const": "FAILED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "COMPLETED",
                         "type": "string"
                       }
                     ]
@@ -2815,20 +2595,15 @@
                 "additionalProperties": false,
                 "type": "object",
                 "required": [
-                  "scanned",
-                  "l1_candidates",
+                  "l1_scanned",
                   "l1_unloaded",
-                  "l2_candidates",
-                  "l2_archived",
+                  "l2_scanned",
+                  "l2_unloaded",
                   "skipped_active",
                   "failed"
                 ],
                 "properties": {
-                  "scanned": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "l1_candidates": {
+                  "l1_scanned": {
                     "minimum": 0,
                     "type": "integer"
                   },
@@ -2836,11 +2611,11 @@
                     "minimum": 0,
                     "type": "integer"
                   },
-                  "l2_candidates": {
+                  "l2_scanned": {
                     "minimum": 0,
                     "type": "integer"
                   },
-                  "l2_archived": {
+                  "l2_unloaded": {
                     "minimum": 0,
                     "type": "integer"
                   },
@@ -2938,7 +2713,6 @@
                   },
                   "now": {
                     "format": "date-time",
-                    "pattern": "Z$",
                     "type": "string"
                   }
                 }
@@ -3033,10 +2807,9 @@
                     ]
                   },
                   "checks": {
-                    "additionalProperties": false,
                     "type": "object",
                     "patternProperties": {
-                      "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {
+                      "^(.*)$": {
                         "type": "boolean"
                       }
                     }
@@ -3142,32 +2915,6 @@
                 "type": "null"
               }
             ]
-          }
-        }
-      },
-      "ClockAdvanceRequest": {
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "request_id",
-          "idempotency_key",
-          "seconds"
-        ],
-        "properties": {
-          "request_id": {
-            "minLength": 1,
-            "maxLength": 128,
-            "type": "string"
-          },
-          "idempotency_key": {
-            "minLength": 8,
-            "maxLength": 256,
-            "type": "string"
-          },
-          "seconds": {
-            "minimum": 0,
-            "maximum": 604800,
-            "type": "integer"
           }
         }
       }

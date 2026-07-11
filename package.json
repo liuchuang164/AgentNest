@@ -15,14 +15,16 @@
     "format:check": "prettier --check \"{apps,packages,scripts,tests}/**/*.ts\" \"*.{json,mjs,ts,yaml}\" \".github/workflows/*.yml\"",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm test:unit && pnpm test:contract",
+    "test": "pnpm test:unit && pnpm test:contract && pnpm test:integration",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:contract": "pnpm contracts:check && vitest run --config vitest.contract.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "secret:scan": "tsx scripts/verify/secret-scan.ts"
   },
   "devDependencies": {
+    "@agentnest/capability": "workspace:*",
     "@agentnest/contracts": "workspace:*",
+    "@agentnest/persistence": "workspace:*",
     "@apidevtools/swagger-parser": "12.1.0",
     "@eslint/js": "10.0.1",
     "@types/node": "24.13.3",

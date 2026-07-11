@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "phase": 2,
+  "status": "PASS_LOCAL",
+  "generated_at": "2026-07-11T15:33:12Z",
+  "branch": "codex/lean-demo",
+  "base_commit": "e2488814ca05ca00ade1e3ab050981ee8464a6f7",
+  "runtime": {
+    "node": "v24.18.0",
+    "pnpm": "11.11.0"
+  },
+  "gate": {
+    "install_frozen": "PASS",
+    "format_check": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "unit": {
+      "status": "PASS",
+      "files": 10,
+      "tests": 32
+    },
+    "contract": {
+      "status": "PASS",
+      "files": 3,
+      "tests": 13
+    },
+    "adapter_integration": {
+      "status": "PASS",
+      "files": 1,
+      "tests": 2,
+      "real_postgres": false
+    },
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "deferred": [
+    "real PostgreSQL process validation",
+    "OpenClaw L0-L1-L2 execution",
+    "Gateway Mock execution context enforcement",
+    "lifecycle checkpoint unload restore",
+    "remote deployment"
+  ]
+}

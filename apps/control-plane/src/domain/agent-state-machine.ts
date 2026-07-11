@@ -6,33 +6,21 @@ const L1_TRANSITIONS: Readonly<Record<L1RuntimeStatus, readonly L1RuntimeStatus[
   [L1RuntimeStatus.IDLE]: [L1RuntimeStatus.ACTIVE, L1RuntimeStatus.CHECKPOINTING],
   [L1RuntimeStatus.CHECKPOINTING]: [L1RuntimeStatus.UNLOADING, L1RuntimeStatus.CHECKPOINT_FAILED],
   [L1RuntimeStatus.CHECKPOINT_FAILED]: [L1RuntimeStatus.ACTIVE, L1RuntimeStatus.IDLE],
-  [L1RuntimeStatus.UNLOADING]: [L1RuntimeStatus.DESTROYED, L1RuntimeStatus.UNLOAD_FAILED],
+  [L1RuntimeStatus.UNLOADING]: [L1RuntimeStatus.UNLOADED, L1RuntimeStatus.UNLOAD_FAILED],
   [L1RuntimeStatus.UNLOAD_FAILED]: [L1RuntimeStatus.IDLE],
-  [L1RuntimeStatus.DESTROYED]: [L1RuntimeStatus.PROVISIONING],
+  [L1RuntimeStatus.UNLOADED]: [L1RuntimeStatus.PROVISIONING],
   [L1RuntimeStatus.FAILED]: [L1RuntimeStatus.PROVISIONING],
 };
 
 const L2_TRANSITIONS: Readonly<Record<L2TaskStatus, readonly L2TaskStatus[]>> = {
-  [L2TaskStatus.QUEUED]: [L2TaskStatus.SPAWNING, L2TaskStatus.CANCELLED],
-  [L2TaskStatus.SPAWNING]: [L2TaskStatus.RUNNING, L2TaskStatus.FAILED, L2TaskStatus.CANCELLED],
-  [L2TaskStatus.RUNNING]: [
-    L2TaskStatus.WAITING_TOOL,
-    L2TaskStatus.WAITING_INPUT,
-    L2TaskStatus.COMPLETED,
-    L2TaskStatus.FAILED,
-    L2TaskStatus.CANCELLED,
-  ],
-  [L2TaskStatus.WAITING_TOOL]: [L2TaskStatus.RUNNING, L2TaskStatus.FAILED, L2TaskStatus.CANCELLED],
-  [L2TaskStatus.WAITING_INPUT]: [
-    L2TaskStatus.RUNNING,
-    L2TaskStatus.CHECKPOINTED,
-    L2TaskStatus.CANCELLED,
-  ],
+  [L2TaskStatus.QUEUED]: [L2TaskStatus.SPAWNING],
+  [L2TaskStatus.SPAWNING]: [L2TaskStatus.RUNNING, L2TaskStatus.FAILED],
+  [L2TaskStatus.RUNNING]: [L2TaskStatus.WAITING_INPUT, L2TaskStatus.COMPLETED, L2TaskStatus.FAILED],
+  [L2TaskStatus.WAITING_INPUT]: [L2TaskStatus.RUNNING, L2TaskStatus.CHECKPOINTED],
   [L2TaskStatus.COMPLETED]: [L2TaskStatus.CHECKPOINTED],
   [L2TaskStatus.FAILED]: [L2TaskStatus.CHECKPOINTED],
-  [L2TaskStatus.CANCELLED]: [L2TaskStatus.CHECKPOINTED],
-  [L2TaskStatus.CHECKPOINTED]: [L2TaskStatus.ARCHIVED],
-  [L2TaskStatus.ARCHIVED]: [],
+  [L2TaskStatus.CHECKPOINTED]: [L2TaskStatus.UNLOADED],
+  [L2TaskStatus.UNLOADED]: [],
 };
 
 export class InvalidStateTransitionError extends Error {

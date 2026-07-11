@@ -2,52 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentnest.example/schemas/task-request.schema.json",
   "title": "AgentNest Demo Task Request",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "request_id",
-    "tenant_id",
-    "biz_domain",
-    "task_type",
-    "resource",
-    "input"
-  ],
-  "properties": {
-    "request_id": { "type": "string", "minLength": 1, "maxLength": 128 },
-    "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 256 },
-    "tenant_id": { "type": "string", "minLength": 1, "maxLength": 128 },
-    "biz_domain": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
-    "user_id": { "type": "string", "minLength": 1, "maxLength": 128 },
-    "task_type": {
-      "enum": ["LEGAL_EVIDENCE_CHECK", "ROBOT_DOG_HEALTH_CHECK"]
-    },
-    "resource": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["resource_type", "resource_id"],
-      "properties": {
-        "resource_type": { "enum": ["CASE", "DEVICE"] },
-        "resource_id": { "type": "string", "minLength": 1, "maxLength": 128 }
-      }
-    },
-    "input": {
-      "type": "object",
-      "additionalProperties": true,
-      "maxProperties": 50
-    }
-  },
-  "allOf": [
+  "anyOf": [
     {
       "additionalProperties": false,
       "type": "object",
       "required": [
         "request_id",
-        "idempotency_key",
         "tenant_id",
-        "user_id",
-        "role",
         "input",
-        "execution",
         "biz_domain",
         "task_type",
         "resource"
@@ -59,7 +21,7 @@
           "type": "string"
         },
         "idempotency_key": {
-          "minLength": 8,
+          "minLength": 1,
           "maxLength": 256,
           "type": "string"
         },
@@ -73,55 +35,12 @@
           "maxLength": 128,
           "type": "string"
         },
-        "role": {
-          "minLength": 1,
-          "maxLength": 64,
-          "type": "string"
-        },
         "input": {
-          "maxProperties": 50,
           "additionalProperties": false,
+          "maxProperties": 50,
           "type": "object",
           "patternProperties": {
             "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
-          }
-        },
-        "execution": {
-          "additionalProperties": false,
-          "type": "object",
-          "required": [
-            "async",
-            "model",
-            "thinking"
-          ],
-          "properties": {
-            "async": {
-              "type": "boolean"
-            },
-            "model": {
-              "anyOf": [
-                {
-                  "minLength": 1,
-                  "maxLength": 256,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "thinking": {
-              "anyOf": [
-                {
-                  "minLength": 1,
-                  "maxLength": 64,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
           }
         },
         "biz_domain": {
@@ -158,12 +77,8 @@
       "type": "object",
       "required": [
         "request_id",
-        "idempotency_key",
         "tenant_id",
-        "user_id",
-        "role",
         "input",
-        "execution",
         "biz_domain",
         "task_type",
         "resource"
@@ -175,7 +90,7 @@
           "type": "string"
         },
         "idempotency_key": {
-          "minLength": 8,
+          "minLength": 1,
           "maxLength": 256,
           "type": "string"
         },
@@ -189,55 +104,12 @@
           "maxLength": 128,
           "type": "string"
         },
-        "role": {
-          "minLength": 1,
-          "maxLength": 64,
-          "type": "string"
-        },
         "input": {
-          "maxProperties": 50,
           "additionalProperties": false,
+          "maxProperties": 50,
           "type": "object",
           "patternProperties": {
             "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
-          }
-        },
-        "execution": {
-          "additionalProperties": false,
-          "type": "object",
-          "required": [
-            "async",
-            "model",
-            "thinking"
-          ],
-          "properties": {
-            "async": {
-              "type": "boolean"
-            },
-            "model": {
-              "anyOf": [
-                {
-                  "minLength": 1,
-                  "maxLength": 256,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "thinking": {
-              "anyOf": [
-                {
-                  "minLength": 1,
-                  "maxLength": 64,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
           }
         },
         "biz_domain": {
