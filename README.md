@@ -13,6 +13,10 @@ AgentNest 是一个基于 **OpenClaw 官方最新稳定版**的三层多租户 A
 
 > 这是技术验证 Demo，不是生产级零信任、IAM、审计或高可用平台。优先完成真实 OpenClaw 三层链路和最小隔离闭环。
 
+## 当前实现状态
+
+Phase 1 的 pnpm monorepo、严格 TypeScript、同源 JSON Schema/OpenAPI 3.1、状态机、fake clock、CI 和 unit/contract Gate 已落地。真实执行证据见 [`artifacts/reports/phase-1-summary.md`](artifacts/reports/phase-1-summary.md)。Integration、OpenClaw、三层 E2E、远端部署与完整隔离验收仍属于后续阶段，当前不得把 Phase 1 结果解释为 Demo 完成。
+
 ## OpenClaw 基线
 
 只使用官方 stable channel。部署时必须重新解析并记录实际稳定版本，禁止 beta、alpha、RC、dev 和未发布 `main` 特性。

@@ -1,0 +1,11 @@
+{
+  "name": "@agentnest/external-gateway-mock",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@agentnest/capability": "workspace:*",
+    "@agentnest/contracts": "workspace:*",
+    "@agentnest/persistence": "workspace:*"
+  }
+}

@@ -10,23 +10,85 @@
     "trace_id",
     "tenant_id",
     "biz_domain",
+    "logical_agent_id",
+    "runtime_instance_id",
+    "agent_id",
+    "session_id",
+    "task_id",
     "event_type",
     "payload",
     "created_at"
   ],
   "properties": {
-    "schema_version": { "type": "string", "const": "1.0" },
-    "event_id": { "type": "string", "minLength": 1 },
-    "trace_id": { "type": "string", "minLength": 1 },
-    "tenant_id": { "type": "string", "minLength": 1 },
-    "biz_domain": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
-    "logical_agent_id": { "type": ["string", "null"] },
-    "runtime_instance_id": { "type": ["string", "null"] },
-    "agent_id": { "type": ["string", "null"] },
-    "session_id": { "type": ["string", "null"] },
-    "task_id": { "type": ["string", "null"] },
-    "execution_context_id": { "type": ["string", "null"], "format": "uuid" },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "biz_domain": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "logical_agent_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 128
+    },
+    "runtime_instance_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 128
+    },
+    "agent_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 128
+    },
+    "session_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 128
+    },
+    "task_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 128
+    },
+    "execution_context_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
     "event_type": {
+      "type": "string",
       "enum": [
         "REQUEST_ACCEPTED",
         "L1_ENSURE_STARTED",
@@ -55,14 +117,33 @@
       ]
     },
     "decision": {
-      "type": ["string", "null"],
-      "enum": ["ALLOW", "DENY", null]
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "ALLOW",
+        "DENY",
+        null
+      ]
     },
-    "reason": { "type": ["string", "null"] },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
     "payload": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
+      }
     },
-    "created_at": { "type": "string", "format": "date-time" }
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
   }
 }

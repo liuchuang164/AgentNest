@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentnest.example/schemas/agent-state.schema.json",
+  "title": "AgentNest Agent State",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "biz_domain",
+        "logical_agent_id",
+        "runtime_instance_id",
+        "agent_id",
+        "trace_id",
+        "capability_snapshot_id",
+        "restored_from_runtime_instance_id",
+        "last_active_at",
+        "created_at",
+        "updated_at",
+        "level",
+        "session_id",
+        "task_id",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "type": "string"
+        },
+        "tenant_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "biz_domain": {
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        "logical_agent_id": {
+          "pattern": "^tb_[a-f0-9]{20}$",
+          "type": "string"
+        },
+        "runtime_instance_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "agent_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "trace_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "capability_snapshot_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "restored_from_runtime_instance_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_active_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "type": "string"
+        },
+        "level": {
+          "const": "L1",
+          "type": "string"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "task_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "const": "PROVISIONING",
+              "type": "string"
+            },
+            {
+              "const": "ACTIVE",
+              "type": "string"
+            },
+            {
+              "const": "IDLE",
+              "type": "string"
+            },
+            {
+              "const": "CHECKPOINTING",
+              "type": "string"
+            },
+            {
+              "const": "CHECKPOINT_FAILED",
+              "type": "string"
+            },
+            {
+              "const": "UNLOADING",
+              "type": "string"
+            },
+            {
+              "const": "UNLOAD_FAILED",
+              "type": "string"
+            },
+            {
+              "const": "DESTROYED",
+              "type": "string"
+            },
+            {
+              "const": "FAILED",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "biz_domain",
+        "logical_agent_id",
+        "runtime_instance_id",
+        "agent_id",
+        "trace_id",
+        "capability_snapshot_id",
+        "restored_from_runtime_instance_id",
+        "last_active_at",
+        "created_at",
+        "updated_at",
+        "level",
+        "session_id",
+        "task_id",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "type": "string"
+        },
+        "tenant_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "biz_domain": {
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        "logical_agent_id": {
+          "pattern": "^tb_[a-f0-9]{20}$",
+          "type": "string"
+        },
+        "runtime_instance_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "agent_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "trace_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "capability_snapshot_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "restored_from_runtime_instance_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_active_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "pattern": "Z$",
+          "type": "string"
+        },
+        "level": {
+          "const": "L2",
+          "type": "string"
+        },
+        "session_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "task_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "const": "QUEUED",
+              "type": "string"
+            },
+            {
+              "const": "SPAWNING",
+              "type": "string"
+            },
+            {
+              "const": "RUNNING",
+              "type": "string"
+            },
+            {
+              "const": "WAITING_TOOL",
+              "type": "string"
+            },
+            {
+              "const": "WAITING_INPUT",
+              "type": "string"
+            },
+            {
+              "const": "COMPLETED",
+              "type": "string"
+            },
+            {
+              "const": "FAILED",
+              "type": "string"
+            },
+            {
+              "const": "CANCELLED",
+              "type": "string"
+            },
+            {
+              "const": "CHECKPOINTED",
+              "type": "string"
+            },
+            {
+              "const": "ARCHIVED",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "phase": 1,
+  "generated_at": "2026-07-11T10:27:55Z",
+  "baseline_git_sha": "69739578aa3d54ee296a2ab24a63434ae5a41783",
+  "runtime": {
+    "node": "v24.18.0",
+    "pnpm": "11.11.0"
+  },
+  "gates": [
+    { "command": "pnpm install --frozen-lockfile", "status": "passed", "exit_code": 0 },
+    { "command": "pnpm format:check", "status": "passed", "exit_code": 0 },
+    { "command": "pnpm lint", "status": "passed", "exit_code": 0 },
+    { "command": "pnpm typecheck", "status": "passed", "exit_code": 0 },
+    {
+      "command": "pnpm test:unit",
+      "status": "passed",
+      "exit_code": 0,
+      "test_files": 5,
+      "tests": 15
+    },
+    {
+      "command": "pnpm test:contract",
+      "status": "passed",
+      "exit_code": 0,
+      "test_files": 2,
+      "tests": 12
+    },
+    {
+      "command": "pnpm secret:scan",
+      "status": "passed",
+      "exit_code": 0,
+      "files_scanned": 83,
+      "ignored_artifacts_scanned": true,
+      "root_config_enumerated": false
+    }
+  ],
+  "remote_operations_performed": false,
+  "openclaw_verified": false,
+  "known_blockers": [
+    "config.txt permissions are 0644; deployment requires 0600",
+    "password SSH authentication and host-key pinning are not implemented yet"
+  ]
+}

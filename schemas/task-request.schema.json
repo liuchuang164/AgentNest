@@ -38,29 +38,233 @@
   },
   "allOf": [
     {
-      "if": {
-        "properties": { "task_type": { "const": "LEGAL_EVIDENCE_CHECK" } },
-        "required": ["task_type"]
-      },
-      "then": {
-        "properties": {
-          "biz_domain": { "const": "LEGAL" },
-          "resource": {
-            "properties": { "resource_type": { "const": "CASE" } }
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "request_id",
+        "idempotency_key",
+        "tenant_id",
+        "user_id",
+        "role",
+        "input",
+        "execution",
+        "biz_domain",
+        "task_type",
+        "resource"
+      ],
+      "properties": {
+        "request_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "idempotency_key": {
+          "minLength": 8,
+          "maxLength": 256,
+          "type": "string"
+        },
+        "tenant_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "user_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "maxLength": 64,
+          "type": "string"
+        },
+        "input": {
+          "maxProperties": 50,
+          "additionalProperties": false,
+          "type": "object",
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
+          }
+        },
+        "execution": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "async",
+            "model",
+            "thinking"
+          ],
+          "properties": {
+            "async": {
+              "type": "boolean"
+            },
+            "model": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "thinking": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "biz_domain": {
+          "const": "LEGAL",
+          "type": "string"
+        },
+        "task_type": {
+          "const": "LEGAL_EVIDENCE_CHECK",
+          "type": "string"
+        },
+        "resource": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "resource_type",
+            "resource_id"
+          ],
+          "properties": {
+            "resource_type": {
+              "const": "CASE",
+              "type": "string"
+            },
+            "resource_id": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
           }
         }
       }
     },
     {
-      "if": {
-        "properties": { "task_type": { "const": "ROBOT_DOG_HEALTH_CHECK" } },
-        "required": ["task_type"]
-      },
-      "then": {
-        "properties": {
-          "biz_domain": { "const": "ROBOT_DOG" },
-          "resource": {
-            "properties": { "resource_type": { "const": "DEVICE" } }
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "request_id",
+        "idempotency_key",
+        "tenant_id",
+        "user_id",
+        "role",
+        "input",
+        "execution",
+        "biz_domain",
+        "task_type",
+        "resource"
+      ],
+      "properties": {
+        "request_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "idempotency_key": {
+          "minLength": 8,
+          "maxLength": 256,
+          "type": "string"
+        },
+        "tenant_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "user_id": {
+          "minLength": 1,
+          "maxLength": 128,
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "maxLength": 64,
+          "type": "string"
+        },
+        "input": {
+          "maxProperties": 50,
+          "additionalProperties": false,
+          "type": "object",
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
+          }
+        },
+        "execution": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "async",
+            "model",
+            "thinking"
+          ],
+          "properties": {
+            "async": {
+              "type": "boolean"
+            },
+            "model": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "thinking": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "biz_domain": {
+          "const": "ROBOT_DOG",
+          "type": "string"
+        },
+        "task_type": {
+          "const": "ROBOT_DOG_HEALTH_CHECK",
+          "type": "string"
+        },
+        "resource": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "resource_type",
+            "resource_id"
+          ],
+          "properties": {
+            "resource_type": {
+              "const": "DEVICE",
+              "type": "string"
+            },
+            "resource_id": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
           }
         }
       }

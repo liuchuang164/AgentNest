@@ -36,6 +36,30 @@ trace_id
 
 调用方 body 中的 `tenant_id`、`biz_domain` 是路由声明。Control Plane 校验后，将权威 scope 写入服务端 `execution_context`。Gateway Mock 不直接相信模型或 Tool body 自报的 scope。
 
+事件模型还必须包含 `timestamp` 和 `created_at`；当前层级不适用的关联字段使用 `null`，不得省略。`timestamp` 表示事件发生时间，`created_at` 表示持久化记录创建时间。
+
+### 1.1 可信与不可信上下文
+
+以下字段来自调用方，只是声明，不能直接作为授权事实：
+
+```text
+tenant_id
+biz_domain
+user_id
+role
+resource_id
+```
+
+Control Plane 必须通过认证上下文或 Demo 固定身份映射解析可信身份，并生成服务端 `execution_context`。Gateway 只接受 `execution_context_id` 指向的权威上下文。
+
+### 1.2 错误处理
+
+- 授权失败返回统一业务错误，不暴露其他租户或资源是否存在；
+- 任何未知 tool/action 默认拒绝；
+- 业务错误可以使用 HTTP 4xx，系统错误使用 5xx；
+- Tool 协议若要求 HTTP 200 包裹错误，内部 `success=false` 和 `code` 仍必须可靠；
+- 所有拒绝写 Trace，但不得记录密钥或完整敏感输入。
+
 ---
 
 ## 2. 提交任务
@@ -200,6 +224,8 @@ POST /api/admin/clock/advance
 
 ```json
 {
+  "request_id": "req_clock_01",
+  "idempotency_key": "advance-clock-demo-01",
   "seconds": 3600
 }
 ```
@@ -212,6 +238,8 @@ POST /api/admin/agents/{logical_agent_id}/unload
 ```
 
 存在活动 L2 或持久化失败时，unload 必须拒绝。
+
+`/health/live` 和 `/health/ready` 使用统一的 `success/code/message/request_id/trace_id/data/error` envelope。`/metrics` 为 Prometheus text exposition 的协议例外，必须通过 `X-Request-Id` 和 `X-Trace-Id` 响应头返回关联 ID。
 
 ---
 
@@ -290,6 +318,11 @@ Demo 使用简单版本化 Profile，不使用签名 Snapshot/Token。
     "legal_research_query": ["query"]
   },
   "memory_scopes": ["TENANT_BIZ_MEMORY", "RESOURCE_MEMORY"],
+  "model_policy": {
+    "providers": ["configured-provider"],
+    "models": ["configured-model"],
+    "allow_user_override": false
+  },
   "lifecycle": {
     "l1_idle_ttl_seconds": 86400,
     "l2_idle_ttl_seconds": 3600,
@@ -335,7 +368,8 @@ Control Plane 为每个 L2 创建服务端记录：
 - 记录保存在 PostgreSQL；
 - Gateway 根据 ID 读取权威内容；
 - body 不能覆盖 tenant/biz/allowed tools；
-- context 不存在、过期或 scope 不匹配时拒绝。
+- context 不存在、过期或 scope 不匹配时拒绝；
+- context 不得包含密码、模型 key 或数据库凭证。
 
 ---
 
@@ -508,6 +542,8 @@ QUEUED → RUNNING → COMPLETED/FAILED → CHECKPOINTED → UNLOADED
 ```
 
 非法状态转换必须返回领域错误。
+
+Trace payload 必须脱敏并带 schema version。`logical_agent_id`、`runtime_instance_id`、`session_id`、`task_id` 等关联字段必须存在；不适用时为 `null`。
 
 ---
 

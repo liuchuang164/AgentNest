@@ -1,0 +1,53 @@
+{
+  "workspaces": {
+    "@agentnest/contracts": {
+      "path": "packages/contracts",
+      "allowedInternalDependencies": []
+    },
+    "@agentnest/capability": {
+      "path": "packages/capability",
+      "allowedInternalDependencies": ["@agentnest/contracts"]
+    },
+    "@agentnest/persistence": {
+      "path": "packages/persistence",
+      "allowedInternalDependencies": ["@agentnest/contracts"]
+    },
+    "@agentnest/openclaw-adapter": {
+      "path": "packages/openclaw-adapter",
+      "allowedInternalDependencies": ["@agentnest/contracts"]
+    },
+    "@agentnest/tenant-runtime-plugin": {
+      "path": "packages/tenant-runtime-plugin",
+      "allowedInternalDependencies": ["@agentnest/capability", "@agentnest/contracts"]
+    },
+    "@agentnest/test-support": {
+      "path": "packages/test-support",
+      "allowedInternalDependencies": []
+    },
+    "@agentnest/control-plane": {
+      "path": "apps/control-plane",
+      "allowedInternalDependencies": [
+        "@agentnest/capability",
+        "@agentnest/contracts",
+        "@agentnest/openclaw-adapter",
+        "@agentnest/persistence"
+      ]
+    },
+    "@agentnest/data-gateway-mock": {
+      "path": "apps/data-gateway-mock",
+      "allowedInternalDependencies": [
+        "@agentnest/capability",
+        "@agentnest/contracts",
+        "@agentnest/persistence"
+      ]
+    },
+    "@agentnest/external-gateway-mock": {
+      "path": "apps/external-gateway-mock",
+      "allowedInternalDependencies": [
+        "@agentnest/capability",
+        "@agentnest/contracts",
+        "@agentnest/persistence"
+      ]
+    }
+  }
+}

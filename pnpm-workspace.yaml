@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+
+autoInstallPeers: false
+strictPeerDependencies: true
+saveExact: true
+nodeVersion: 24.18.0
+engineStrict: true
+
+allowBuilds:
+  esbuild: true
+
+catalog:
+  "@sinclair/typebox": 0.34.50

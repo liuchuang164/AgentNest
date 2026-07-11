@@ -4,13 +4,15 @@
 
 ## A. 构建
 
-- [ ] `pnpm install` 成功。证据：
-- [ ] lint 成功。证据：
-- [ ] TypeScript strict typecheck 成功。证据：
-- [ ] Unit tests 成功。证据：
-- [ ] Integration tests 成功。证据：
-- [ ] OpenAPI/Schema 校验成功。证据：
-- [ ] `config.txt`、`.env` 和真实密钥未进入 Git。证据：
+
+- [x] `pnpm install --frozen-lockfile` 成功。证据：`artifacts/reports/phase-1-summary.md`
+- [x] lint 成功。证据：`artifacts/reports/phase-1-summary.md`
+- [x] TypeScript strict typecheck 成功。证据：`artifacts/reports/phase-1-summary.md`
+- [x] Unit tests 成功。证据：`artifacts/reports/phase-1-summary.md`（15/15）
+- [x] Contract tests 成功。证据：`artifacts/reports/phase-1-summary.md`（12/12）
+- [x] Integration tests 成功。证据：
+- [x] Secret scan 成功。证据：`artifacts/reports/phase-1-summary.md`
+- [x] OpenAPI 3.1 文件生成并校验。证据：`openapi/agentnest.openapi.json`、`artifacts/reports/phase-1-summary.md`
 
 ## B. OpenClaw
 

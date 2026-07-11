@@ -1,0 +1,3176 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "AgentNest Control Plane API",
+    "version": "0.1.0",
+    "description": "Tenant and business scoped control-plane contract for the AgentNest demo."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:18080"
+    }
+  ],
+  "tags": [
+    {
+      "name": "tasks"
+    },
+    {
+      "name": "agents"
+    },
+    {
+      "name": "admin"
+    },
+    {
+      "name": "health"
+    }
+  ],
+  "paths": {
+    "/api/v1/tasks": {
+      "post": {
+        "operationId": "submitTask",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "DemoBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskAcceptedResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Task accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskAcceptedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{taskId}": {
+      "get": {
+        "operationId": "getTask",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "DemoBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agents/{logicalAgentId}": {
+      "get": {
+        "operationId": "getAgent",
+        "tags": [
+          "agents"
+        ],
+        "security": [
+          {
+            "DemoBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "logicalAgentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^tb_[a-f0-9]{20}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/agents/{logicalAgentId}/checkpoint": {
+      "post": {
+        "operationId": "checkpointAgent",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "AdminBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 256
+            }
+          },
+          {
+            "name": "logicalAgentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^tb_[a-f0-9]{20}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "idempotency_key",
+                  "reason"
+                ],
+                "properties": {
+                  "request_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 256
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/agents/{logicalAgentId}/unload": {
+      "post": {
+        "operationId": "unloadAgent",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "AdminBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 256
+            }
+          },
+          {
+            "name": "logicalAgentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^tb_[a-f0-9]{20}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "idempotency_key",
+                  "reason",
+                  "force"
+                ],
+                "properties": {
+                  "request_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 256
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "force": {
+                    "type": "boolean",
+                    "const": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/reaper/run-once": {
+      "post": {
+        "operationId": "runReaperOnce",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "AdminBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "idempotency_key"
+                ],
+                "properties": {
+                  "request_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 256
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReaperResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/test-clock/advance": {
+      "post": {
+        "operationId": "advanceTestClock",
+        "description": "Available only in test or demo profiles on loopback/private bindings.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "AdminBearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClockAdvanceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockAdvanceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Capability denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "getLiveness",
+        "tags": [
+          "health"
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Process is alive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "tags": [
+          "health"
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dependencies are ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A required dependency is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "getMetrics",
+        "tags": [
+          "health"
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prometheus text exposition",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "type": "string"
+                }
+              },
+              "X-Trace-Id": {
+                "schema": {
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "DemoBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "AdminBearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "TaskRequest": {
+        "$id": "https://agentnest.example/schemas/task-request.schema.json",
+        "title": "AgentNest Task Request",
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "request_id",
+              "idempotency_key",
+              "tenant_id",
+              "user_id",
+              "role",
+              "input",
+              "execution",
+              "biz_domain",
+              "task_type",
+              "resource"
+            ],
+            "properties": {
+              "request_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "idempotency_key": {
+                "minLength": 8,
+                "maxLength": 256,
+                "type": "string"
+              },
+              "tenant_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "user_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "role": {
+                "minLength": 1,
+                "maxLength": 64,
+                "type": "string"
+              },
+              "input": {
+                "maxProperties": 50,
+                "additionalProperties": false,
+                "type": "object",
+                "patternProperties": {
+                  "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
+                }
+              },
+              "execution": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "async",
+                  "model",
+                  "thinking"
+                ],
+                "properties": {
+                  "async": {
+                    "type": "boolean"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "thinking": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              },
+              "biz_domain": {
+                "const": "LEGAL",
+                "type": "string"
+              },
+              "task_type": {
+                "const": "LEGAL_EVIDENCE_CHECK",
+                "type": "string"
+              },
+              "resource": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "resource_type",
+                  "resource_id"
+                ],
+                "properties": {
+                  "resource_type": {
+                    "const": "CASE",
+                    "type": "string"
+                  },
+                  "resource_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "request_id",
+              "idempotency_key",
+              "tenant_id",
+              "user_id",
+              "role",
+              "input",
+              "execution",
+              "biz_domain",
+              "task_type",
+              "resource"
+            ],
+            "properties": {
+              "request_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "idempotency_key": {
+                "minLength": 8,
+                "maxLength": 256,
+                "type": "string"
+              },
+              "tenant_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "user_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "role": {
+                "minLength": 1,
+                "maxLength": 64,
+                "type": "string"
+              },
+              "input": {
+                "maxProperties": 50,
+                "additionalProperties": false,
+                "type": "object",
+                "patternProperties": {
+                  "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
+                }
+              },
+              "execution": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "async",
+                  "model",
+                  "thinking"
+                ],
+                "properties": {
+                  "async": {
+                    "type": "boolean"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "thinking": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              },
+              "biz_domain": {
+                "const": "ROBOT_DOG",
+                "type": "string"
+              },
+              "task_type": {
+                "const": "ROBOT_DOG_HEALTH_CHECK",
+                "type": "string"
+              },
+              "resource": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "resource_type",
+                  "resource_id"
+                ],
+                "properties": {
+                  "resource_type": {
+                    "const": "DEVICE",
+                    "type": "string"
+                  },
+                  "resource_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "CapabilitySnapshot": {
+        "$id": "https://agentnest.example/schemas/capability-snapshot.schema.json",
+        "title": "AgentNest Capability Snapshot",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "snapshot_id",
+          "schema_version",
+          "policy_version",
+          "tenant_id",
+          "biz_domain",
+          "skills",
+          "tools",
+          "memory_scopes",
+          "data_scopes",
+          "sandbox_policy",
+          "model_policy",
+          "lifecycle_policy",
+          "created_at",
+          "hash"
+        ],
+        "properties": {
+          "snapshot_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "1.0",
+            "type": "string"
+          },
+          "policy_version": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "tenant_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "biz_domain": {
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Z][A-Z0-9_]*$",
+            "type": "string"
+          },
+          "skills": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "name",
+                "version",
+                "content_hash"
+              ],
+              "properties": {
+                "name": {
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "version": {
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "content_hash": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "tools": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "name",
+                "actions",
+                "constraints"
+              ],
+              "properties": {
+                "name": {
+                  "minLength": 3,
+                  "maxLength": 128,
+                  "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$",
+                  "type": "string"
+                },
+                "actions": {
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "type": "array",
+                  "items": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-z][a-z0-9._-]*$",
+                    "type": "string"
+                  }
+                },
+                "constraints": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "resource_types"
+                  ],
+                  "properties": {
+                    "resource_types": {
+                      "uniqueItems": true,
+                      "type": "array",
+                      "items": {
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "memory_scopes": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "type",
+                "resource_type",
+                "access"
+              ],
+              "properties": {
+                "type": {
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "resource_type": {
+                  "anyOf": [
+                    {
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "access": {
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "const": "read",
+                        "type": "string"
+                      },
+                      {
+                        "const": "write",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "data_scopes": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "resource_type",
+                "operations"
+              ],
+              "properties": {
+                "resource_type": {
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "operations": {
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "type": "array",
+                  "items": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-z][a-z0-9._-]*$",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "sandbox_policy": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "mode",
+              "scope",
+              "exec_allowed"
+            ],
+            "properties": {
+              "mode": {
+                "const": "all",
+                "type": "string"
+              },
+              "scope": {
+                "const": "agent",
+                "type": "string"
+              },
+              "exec_allowed": {
+                "type": "boolean"
+              }
+            }
+          },
+          "model_policy": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "providers",
+              "models",
+              "allow_user_override"
+            ],
+            "properties": {
+              "providers": {
+                "minItems": 1,
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "type": "string"
+                }
+              },
+              "models": {
+                "minItems": 1,
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "type": "string"
+                }
+              },
+              "allow_user_override": {
+                "type": "boolean"
+              }
+            }
+          },
+          "lifecycle_policy": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "l1_idle_ttl_seconds",
+              "l2_idle_ttl_seconds",
+              "max_active_l2"
+            ],
+            "properties": {
+              "l1_idle_ttl_seconds": {
+                "minimum": 60,
+                "type": "integer"
+              },
+              "l2_idle_ttl_seconds": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "max_active_l2": {
+                "minimum": 1,
+                "maximum": 20,
+                "type": "integer"
+              }
+            }
+          },
+          "created_at": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "type": "string"
+          },
+          "hash": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          }
+        }
+      },
+      "CapabilityTokenClaims": {
+        "$id": "https://agentnest.example/schemas/capability-token-claims.schema.json",
+        "title": "AgentNest L2 Capability Token Claims",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "iss",
+          "aud",
+          "jti",
+          "parent_jti",
+          "snapshot_id",
+          "tenant_id",
+          "biz_domain",
+          "logical_agent_id",
+          "runtime_instance_id",
+          "agent_id",
+          "session_id",
+          "task_id",
+          "tools",
+          "memory_scope",
+          "data_scope",
+          "iat",
+          "nbf",
+          "exp",
+          "nonce"
+        ],
+        "properties": {
+          "iss": {
+            "const": "agentnest-control-plane",
+            "type": "string"
+          },
+          "aud": {
+            "minItems": 1,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "const": "data-gateway",
+                  "type": "string"
+                },
+                {
+                  "const": "external-gateway",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "jti": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "parent_jti": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "snapshot_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "tenant_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "biz_domain": {
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Z][A-Z0-9_]*$",
+            "type": "string"
+          },
+          "logical_agent_id": {
+            "pattern": "^tb_[a-f0-9]{20}$",
+            "type": "string"
+          },
+          "runtime_instance_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "agent_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "session_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "task_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "tools": {
+            "minProperties": 1,
+            "additionalProperties": false,
+            "type": "object",
+            "patternProperties": {
+              "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$": {
+                "minItems": 1,
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[a-z][a-z0-9._-]*$",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "memory_scope": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "resource_type",
+              "resource_ids"
+            ],
+            "properties": {
+              "resource_type": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "resource_ids": {
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "data_scope": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "resource_type",
+              "resource_ids"
+            ],
+            "properties": {
+              "resource_type": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "resource_ids": {
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "iat": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "nbf": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "exp": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "nonce": {
+            "minLength": 16,
+            "maxLength": 256,
+            "type": "string"
+          }
+        }
+      },
+      "AgentState": {
+        "$id": "https://agentnest.example/schemas/agent-state.schema.json",
+        "title": "AgentNest Agent State",
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "schema_version",
+              "tenant_id",
+              "biz_domain",
+              "logical_agent_id",
+              "runtime_instance_id",
+              "agent_id",
+              "trace_id",
+              "capability_snapshot_id",
+              "restored_from_runtime_instance_id",
+              "last_active_at",
+              "created_at",
+              "updated_at",
+              "level",
+              "session_id",
+              "task_id",
+              "status"
+            ],
+            "properties": {
+              "schema_version": {
+                "const": "1.0",
+                "type": "string"
+              },
+              "tenant_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "biz_domain": {
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[A-Z][A-Z0-9_]*$",
+                "type": "string"
+              },
+              "logical_agent_id": {
+                "pattern": "^tb_[a-f0-9]{20}$",
+                "type": "string"
+              },
+              "runtime_instance_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "agent_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "trace_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "capability_snapshot_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "restored_from_runtime_instance_id": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "last_active_at": {
+                "format": "date-time",
+                "pattern": "Z$",
+                "type": "string"
+              },
+              "created_at": {
+                "format": "date-time",
+                "pattern": "Z$",
+                "type": "string"
+              },
+              "updated_at": {
+                "format": "date-time",
+                "pattern": "Z$",
+                "type": "string"
+              },
+              "level": {
+                "const": "L1",
+                "type": "string"
+              },
+              "session_id": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "task_id": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "const": "PROVISIONING",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ACTIVE",
+                    "type": "string"
+                  },
+                  {
+                    "const": "IDLE",
+                    "type": "string"
+                  },
+                  {
+                    "const": "CHECKPOINTING",
+                    "type": "string"
+                  },
+                  {
+                    "const": "CHECKPOINT_FAILED",
+                    "type": "string"
+                  },
+                  {
+                    "const": "UNLOADING",
+                    "type": "string"
+                  },
+                  {
+                    "const": "UNLOAD_FAILED",
+                    "type": "string"
+                  },
+                  {
+                    "const": "DESTROYED",
+                    "type": "string"
+                  },
+                  {
+                    "const": "FAILED",
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "schema_version",
+              "tenant_id",
+              "biz_domain",
+              "logical_agent_id",
+              "runtime_instance_id",
+              "agent_id",
+              "trace_id",
+              "capability_snapshot_id",
+              "restored_from_runtime_instance_id",
+              "last_active_at",
+              "created_at",
+              "updated_at",
+              "level",
+              "session_id",
+              "task_id",
+              "status"
+            ],
+            "properties": {
+              "schema_version": {
+                "const": "1.0",
+                "type": "string"
+              },
+              "tenant_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "biz_domain": {
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[A-Z][A-Z0-9_]*$",
+                "type": "string"
+              },
+              "logical_agent_id": {
+                "pattern": "^tb_[a-f0-9]{20}$",
+                "type": "string"
+              },
+              "runtime_instance_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "agent_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "trace_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "capability_snapshot_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "restored_from_runtime_instance_id": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "last_active_at": {
+                "format": "date-time",
+                "pattern": "Z$",
+                "type": "string"
+              },
+              "created_at": {
+                "format": "date-time",
+                "pattern": "Z$",
+                "type": "string"
+              },
+              "updated_at": {
+                "format": "date-time",
+                "pattern": "Z$",
+                "type": "string"
+              },
+              "level": {
+                "const": "L2",
+                "type": "string"
+              },
+              "session_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "task_id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "const": "QUEUED",
+                    "type": "string"
+                  },
+                  {
+                    "const": "SPAWNING",
+                    "type": "string"
+                  },
+                  {
+                    "const": "RUNNING",
+                    "type": "string"
+                  },
+                  {
+                    "const": "WAITING_TOOL",
+                    "type": "string"
+                  },
+                  {
+                    "const": "WAITING_INPUT",
+                    "type": "string"
+                  },
+                  {
+                    "const": "COMPLETED",
+                    "type": "string"
+                  },
+                  {
+                    "const": "FAILED",
+                    "type": "string"
+                  },
+                  {
+                    "const": "CANCELLED",
+                    "type": "string"
+                  },
+                  {
+                    "const": "CHECKPOINTED",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ARCHIVED",
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "TraceEvent": {
+        "$id": "https://agentnest.example/schemas/trace-event.schema.json",
+        "title": "AgentNest Trace Event",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "event_id",
+          "trace_id",
+          "tenant_id",
+          "biz_domain",
+          "logical_agent_id",
+          "runtime_instance_id",
+          "agent_id",
+          "session_id",
+          "task_id",
+          "capability_snapshot_id",
+          "event_type",
+          "payload",
+          "previous_hash",
+          "event_hash",
+          "timestamp",
+          "created_at"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "1.0",
+            "type": "string"
+          },
+          "event_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "biz_domain": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[A-Z][A-Z0-9_]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "logical_agent_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runtime_instance_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capability_snapshot_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_type": {
+            "anyOf": [
+              {
+                "const": "REQUEST_ACCEPTED",
+                "type": "string"
+              },
+              {
+                "const": "L1_ENSURE_STARTED",
+                "type": "string"
+              },
+              {
+                "const": "L1_PROFILE_CREATED",
+                "type": "string"
+              },
+              {
+                "const": "L1_PROFILE_REUSED",
+                "type": "string"
+              },
+              {
+                "const": "L1_RESTORED",
+                "type": "string"
+              },
+              {
+                "const": "L2_SPAWN_REQUESTED",
+                "type": "string"
+              },
+              {
+                "const": "L2_SPAWNED",
+                "type": "string"
+              },
+              {
+                "const": "SKILL_SELECTED",
+                "type": "string"
+              },
+              {
+                "const": "TOOL_CALL_REQUESTED",
+                "type": "string"
+              },
+              {
+                "const": "TOOL_CALL_ALLOWED",
+                "type": "string"
+              },
+              {
+                "const": "TOOL_CALL_DENIED",
+                "type": "string"
+              },
+              {
+                "const": "TOOL_CALL_COMPLETED",
+                "type": "string"
+              },
+              {
+                "const": "MEMORY_READ",
+                "type": "string"
+              },
+              {
+                "const": "MEMORY_WRITE",
+                "type": "string"
+              },
+              {
+                "const": "CHECKPOINT_STARTED",
+                "type": "string"
+              },
+              {
+                "const": "CHECKPOINT_COMPLETED",
+                "type": "string"
+              },
+              {
+                "const": "CHECKPOINT_FAILED",
+                "type": "string"
+              },
+              {
+                "const": "L2_ARCHIVED",
+                "type": "string"
+              },
+              {
+                "const": "L1_UNLOAD_STARTED",
+                "type": "string"
+              },
+              {
+                "const": "L1_UNLOADED",
+                "type": "string"
+              },
+              {
+                "const": "RESTORE_STARTED",
+                "type": "string"
+              },
+              {
+                "const": "RESTORE_COMPLETED",
+                "type": "string"
+              },
+              {
+                "const": "POLICY_CHANGED",
+                "type": "string"
+              },
+              {
+                "const": "TOKEN_ISSUED",
+                "type": "string"
+              },
+              {
+                "const": "TOKEN_REJECTED",
+                "type": "string"
+              }
+            ]
+          },
+          "payload": {
+            "additionalProperties": false,
+            "type": "object",
+            "patternProperties": {
+              "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {}
+            }
+          },
+          "previous_hash": {
+            "anyOf": [
+              {
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_hash": {
+            "anyOf": [
+              {
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timestamp": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "pattern": "Z$",
+            "type": "string"
+          }
+        }
+      },
+      "TaskAcceptedResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "request_id",
+          "trace_id",
+          "data",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "task_id",
+                  "logical_agent_id",
+                  "runtime_instance_id",
+                  "status"
+                ],
+                "properties": {
+                  "task_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "logical_agent_id": {
+                    "pattern": "^tb_[a-f0-9]{20}$",
+                    "type": "string"
+                  },
+                  "runtime_instance_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "QUEUED",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "category",
+                  "retryable"
+                ],
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "TaskStatusResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "request_id",
+          "trace_id",
+          "data",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "task_id",
+                  "tenant_id",
+                  "biz_domain",
+                  "task_type",
+                  "status",
+                  "logical_agent_id",
+                  "runtime_instance_id",
+                  "l2_session_id",
+                  "current_step",
+                  "result",
+                  "created_at",
+                  "updated_at"
+                ],
+                "properties": {
+                  "task_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "tenant_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "biz_domain": {
+                    "pattern": "^[A-Z][A-Z0-9_]*$",
+                    "type": "string"
+                  },
+                  "task_type": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "status": {
+                    "anyOf": [
+                      {
+                        "const": "QUEUED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "SPAWNING",
+                        "type": "string"
+                      },
+                      {
+                        "const": "RUNNING",
+                        "type": "string"
+                      },
+                      {
+                        "const": "WAITING_TOOL",
+                        "type": "string"
+                      },
+                      {
+                        "const": "WAITING_INPUT",
+                        "type": "string"
+                      },
+                      {
+                        "const": "COMPLETED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "FAILED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "CANCELLED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "CHECKPOINTED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "ARCHIVED",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "logical_agent_id": {
+                    "pattern": "^tb_[a-f0-9]{20}$",
+                    "type": "string"
+                  },
+                  "runtime_instance_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "l2_session_id": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "current_step": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "result": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "patternProperties": {
+                          "^(.*)$": {}
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "created_at": {
+                    "format": "date-time",
+                    "pattern": "Z$",
+                    "type": "string"
+                  },
+                  "updated_at": {
+                    "format": "date-time",
+                    "pattern": "Z$",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "category",
+                  "retryable"
+                ],
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "AgentStatusResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "request_id",
+          "trace_id",
+          "data",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "logical_agent_id",
+                  "tenant_id",
+                  "biz_domain",
+                  "status",
+                  "current_runtime_instance_id",
+                  "capability_snapshot_id",
+                  "active_l2_count",
+                  "last_active_at"
+                ],
+                "properties": {
+                  "logical_agent_id": {
+                    "pattern": "^tb_[a-f0-9]{20}$",
+                    "type": "string"
+                  },
+                  "tenant_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "biz_domain": {
+                    "pattern": "^[A-Z][A-Z0-9_]*$",
+                    "type": "string"
+                  },
+                  "status": {
+                    "anyOf": [
+                      {
+                        "const": "PROVISIONING",
+                        "type": "string"
+                      },
+                      {
+                        "const": "ACTIVE",
+                        "type": "string"
+                      },
+                      {
+                        "const": "IDLE",
+                        "type": "string"
+                      },
+                      {
+                        "const": "CHECKPOINTING",
+                        "type": "string"
+                      },
+                      {
+                        "const": "CHECKPOINT_FAILED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "UNLOADING",
+                        "type": "string"
+                      },
+                      {
+                        "const": "UNLOAD_FAILED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "DESTROYED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "FAILED",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "current_runtime_instance_id": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "capability_snapshot_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "active_l2_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "last_active_at": {
+                    "format": "date-time",
+                    "pattern": "Z$",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "category",
+                  "retryable"
+                ],
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "AdminActionResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "request_id",
+          "trace_id",
+          "data",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "logical_agent_id",
+                  "status"
+                ],
+                "properties": {
+                  "logical_agent_id": {
+                    "pattern": "^tb_[a-f0-9]{20}$",
+                    "type": "string"
+                  },
+                  "status": {
+                    "anyOf": [
+                      {
+                        "const": "PROVISIONING",
+                        "type": "string"
+                      },
+                      {
+                        "const": "ACTIVE",
+                        "type": "string"
+                      },
+                      {
+                        "const": "IDLE",
+                        "type": "string"
+                      },
+                      {
+                        "const": "CHECKPOINTING",
+                        "type": "string"
+                      },
+                      {
+                        "const": "CHECKPOINT_FAILED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "UNLOADING",
+                        "type": "string"
+                      },
+                      {
+                        "const": "UNLOAD_FAILED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "DESTROYED",
+                        "type": "string"
+                      },
+                      {
+                        "const": "FAILED",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "category",
+                  "retryable"
+                ],
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ReaperResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "request_id",
+          "trace_id",
+          "data",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "scanned",
+                  "l1_candidates",
+                  "l1_unloaded",
+                  "l2_candidates",
+                  "l2_archived",
+                  "skipped_active",
+                  "failed"
+                ],
+                "properties": {
+                  "scanned": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "l1_candidates": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "l1_unloaded": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "l2_candidates": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "l2_archived": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "skipped_active": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "failed": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "category",
+                  "retryable"
+                ],
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ClockAdvanceResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "request_id",
+          "trace_id",
+          "data",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "advanced_seconds",
+                  "now"
+                ],
+                "properties": {
+                  "advanced_seconds": {
+                    "minimum": 0,
+                    "maximum": 604800,
+                    "type": "integer"
+                  },
+                  "now": {
+                    "format": "date-time",
+                    "pattern": "Z$",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "category",
+                  "retryable"
+                ],
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "HealthResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "request_id",
+          "trace_id",
+          "data",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "status",
+                  "checks"
+                ],
+                "properties": {
+                  "status": {
+                    "anyOf": [
+                      {
+                        "const": "ok",
+                        "type": "string"
+                      },
+                      {
+                        "const": "not_ready",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "checks": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "patternProperties": {
+                      "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "category",
+                  "retryable"
+                ],
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "StandardErrorResponse": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "request_id",
+          "trace_id",
+          "data",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "trace_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "category",
+                  "retryable"
+                ],
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ClockAdvanceRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "idempotency_key",
+          "seconds"
+        ],
+        "properties": {
+          "request_id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "idempotency_key": {
+            "minLength": 8,
+            "maxLength": 256,
+            "type": "string"
+          },
+          "seconds": {
+            "minimum": 0,
+            "maximum": 604800,
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

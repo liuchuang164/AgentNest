@@ -73,16 +73,18 @@ health check、查询状态和 Reaper 扫描不更新。
 ```mermaid
 stateDiagram-v2
     [*] --> PROVISIONING
-    PROVISIONING --> ACTIVE
-    PROVISIONING --> FAILED
-    ACTIVE --> IDLE
-    IDLE --> ACTIVE
-    IDLE --> CHECKPOINTING: TTL reached
-    CHECKPOINTING --> IDLE: persistence failed
-    CHECKPOINTING --> UNLOADING: persistence succeeded
-    UNLOADING --> UNLOADED
-    UNLOADING --> IDLE: unload failed
-    UNLOADED --> PROVISIONING: new request
+    PROVISIONING --> ACTIVE: profile observed + state committed
+    PROVISIONING --> FAILED: config/dependency failure
+    ACTIVE --> IDLE: no active task
+    IDLE --> ACTIVE: new task
+    IDLE --> CHECKPOINTING: idle TTL reached
+    CHECKPOINTING --> CHECKPOINT_FAILED: checkpoint failed
+    CHECKPOINT_FAILED --> IDLE: recover for retry
+    CHECKPOINTING --> UNLOADING: checkpoint committed
+    UNLOADING --> DESTROYED: runtime/profile unloaded
+    UNLOADING --> UNLOAD_FAILED: unload failed
+    UNLOAD_FAILED --> IDLE: recover for retry
+    DESTROYED --> PROVISIONING: new request/restore
 ```
 
 ### L1 卸载条件
