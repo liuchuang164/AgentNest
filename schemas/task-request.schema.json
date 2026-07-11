@@ -1,28 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentnest.example/schemas/task-request.schema.json",
-  "title": "AgentNest Task Request",
+  "title": "AgentNest Demo Task Request",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "request_id",
-    "idempotency_key",
     "tenant_id",
     "biz_domain",
-    "user_id",
-    "role",
     "task_type",
     "resource",
-    "input",
-    "execution"
+    "input"
   ],
   "properties": {
     "request_id": { "type": "string", "minLength": 1, "maxLength": 128 },
-    "idempotency_key": { "type": "string", "minLength": 8, "maxLength": 256 },
+    "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 256 },
     "tenant_id": { "type": "string", "minLength": 1, "maxLength": 128 },
     "biz_domain": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
     "user_id": { "type": "string", "minLength": 1, "maxLength": 128 },
-    "role": { "type": "string", "minLength": 1, "maxLength": 64 },
     "task_type": {
       "enum": ["LEGAL_EVIDENCE_CHECK", "ROBOT_DOG_HEALTH_CHECK"]
     },
@@ -39,16 +34,6 @@
       "type": "object",
       "additionalProperties": true,
       "maxProperties": 50
-    },
-    "execution": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["async"],
-      "properties": {
-        "async": { "type": "boolean" },
-        "model": { "type": ["string", "null"] },
-        "thinking": { "type": ["string", "null"] }
-      }
     }
   },
   "allOf": [
