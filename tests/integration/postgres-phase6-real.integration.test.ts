@@ -6,6 +6,7 @@ import {
   PostgresDemoReadRepository,
   PostgresExecutionContextRepository,
   PostgresGatewayTraceRepository,
+  PostgresPhase5PersistenceRepository,
   type PostgresClient,
 } from "@agentnest/persistence";
 import { describe, expect, it } from "vitest";
@@ -242,6 +243,61 @@ describe.skipIf(databaseUrl === undefined)("Phase 6 real PostgreSQL adapters", (
         postgres: true,
         migrations: true,
       });
+
+      const correctPreviousRuntimeId = "runtime_phase6_pg_parent";
+      const currentRestoredRuntimeId = "runtime_phase6_pg_restored";
+      await client.query(
+        `UPDATE agent_runtime_instance
+            SET status = 'UNLOADED',
+                started_at = '2040-01-01T00:00:00.000Z',
+                last_active_at = '2040-01-01T00:00:00.000Z',
+                unloaded_at = '2040-01-01T00:00:00.000Z'
+          WHERE logical_agent_id = $1
+            AND runtime_instance_id = $2`,
+        [logicalAgentId, runtimeInstanceId],
+      );
+      await client.query(
+        `INSERT INTO agent_runtime_instance (
+           logical_agent_id, runtime_instance_id, openclaw_agent_id,
+           status, started_at, last_active_at, unloaded_at
+         ) VALUES ($1, $2, $1, 'UNLOADED', $3, $3, $3)`,
+        [logicalAgentId, correctPreviousRuntimeId, new Date("2030-01-01T00:00:01.000Z")],
+      );
+      await client.query(
+        `UPDATE tenant_biz_agent
+            SET status = 'UNLOADED', current_runtime_instance_id = $3
+          WHERE tenant_id = $1 AND biz_domain = $2`,
+        [scope.tenantId, scope.bizDomain, correctPreviousRuntimeId],
+      );
+      const unloadedBundle = await new PostgresPhase5PersistenceRepository(pool).loadRestoreBundle({
+        scope,
+        logicalAgentId,
+      });
+      expect(unloadedBundle.previousRuntimeInstanceId).toBe(correctPreviousRuntimeId);
+
+      await client.query(
+        `INSERT INTO agent_runtime_instance (
+           logical_agent_id, runtime_instance_id, openclaw_agent_id,
+           status, started_at, last_active_at, restored_from_runtime_instance_id
+         ) VALUES ($1, $2, $1, 'PROVISIONING', $3, $3, $4)`,
+        [
+          logicalAgentId,
+          currentRestoredRuntimeId,
+          new Date("2029-01-01T00:00:00.000Z"),
+          correctPreviousRuntimeId,
+        ],
+      );
+      await client.query(
+        `UPDATE tenant_biz_agent
+            SET status = 'PROVISIONING', current_runtime_instance_id = $3
+          WHERE tenant_id = $1 AND biz_domain = $2`,
+        [scope.tenantId, scope.bizDomain, currentRestoredRuntimeId],
+      );
+      const restoreBundle = await new PostgresPhase5PersistenceRepository(pool).loadRestoreBundle({
+        scope,
+        logicalAgentId,
+      });
+      expect(restoreBundle.previousRuntimeInstanceId).toBe(correctPreviousRuntimeId);
     } finally {
       try {
         await cleanScope(client);

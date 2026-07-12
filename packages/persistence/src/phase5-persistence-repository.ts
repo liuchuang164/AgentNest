@@ -1393,15 +1393,30 @@ export class PostgresPhase5PersistenceRepository {
   ): Promise<string | null> {
     return this.#withClient(async (client) => {
       const result = await client.query<PreviousRuntimeRow>(
-        `SELECT runtime.runtime_instance_id
-           FROM agent_runtime_instance AS runtime
-           JOIN tenant_biz_agent AS agent
-             ON agent.logical_agent_id = runtime.logical_agent_id
+        `SELECT CASE
+                  WHEN current_runtime.status = 'UNLOADED'
+                    THEN current_runtime.runtime_instance_id
+                  ELSE previous_runtime.runtime_instance_id
+                END AS runtime_instance_id
+           FROM tenant_biz_agent AS agent
+           JOIN agent_runtime_instance AS current_runtime
+             ON current_runtime.logical_agent_id = agent.logical_agent_id
+            AND current_runtime.runtime_instance_id = agent.current_runtime_instance_id
+           LEFT JOIN agent_runtime_instance AS previous_runtime
+             ON previous_runtime.logical_agent_id = current_runtime.logical_agent_id
+            AND previous_runtime.runtime_instance_id =
+                current_runtime.restored_from_runtime_instance_id
+            AND previous_runtime.status = 'UNLOADED'
           WHERE agent.tenant_id = $1
             AND agent.biz_domain = $2
             AND agent.logical_agent_id = $3
-            AND runtime.status = 'UNLOADED'
-          ORDER BY runtime.started_at DESC
+            AND (
+              current_runtime.status = 'UNLOADED'
+              OR (
+                current_runtime.status IN ('PROVISIONING', 'ACTIVE', 'IDLE')
+                AND previous_runtime.runtime_instance_id IS NOT NULL
+              )
+            )
           LIMIT 1`,
         [scope.tenantId, scope.bizDomain, logicalAgentId],
       );

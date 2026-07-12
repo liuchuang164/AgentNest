@@ -150,7 +150,7 @@ class RecordingPhase5PostgresClient implements PostgresClient {
       rows = this.#listForScope(this.checkpoints, values).slice(0, 1);
     } else if (text.includes("FROM demo_tool_completion_marker")) {
       rows = this.#findToolCompletion(values);
-    } else if (text.includes("FROM agent_runtime_instance AS runtime")) {
+    } else if (text.includes("JOIN agent_runtime_instance AS current_runtime")) {
       rows = this.runtimeScopes
         .filter(
           (runtime) =>
@@ -954,6 +954,14 @@ describe("PostgresPhase5PersistenceRepository recording adapter", () => {
     expect(bundle.unfinishedTasks.map((task) => task.currentStep)).toEqual(["READ_CASE"]);
     expect(bundle.latestCheckpoint?.snapshotPath).toContain("task_001.checkpoint.json");
     expect(Object.keys(bundle)).not.toContain("transcript");
+    const lineageStatement = client.statements.find((statement) =>
+      statement.includes("JOIN agent_runtime_instance AS current_runtime"),
+    );
+    expect(lineageStatement).toContain(
+      "current_runtime.runtime_instance_id = agent.current_runtime_instance_id",
+    );
+    expect(lineageStatement).toContain("current_runtime.restored_from_runtime_instance_id");
+    expect(lineageStatement).not.toContain("ORDER BY current_runtime.started_at");
     expect(otherTenantBundle.latestSessionSummary).toBeNull();
     expect(otherTenantBundle.memories).toEqual([]);
     expect(otherTenantBundle.unfinishedTasks).toEqual([]);

@@ -45,4 +45,17 @@ describe("Phase 6 remote shell transport", () => {
     expect(configuration).toContain('callerScopes: ["operator.admin"]');
     expect(configuration).toContain("openclaw gateway call sessions.delete");
   });
+
+  it("runs fresh Phase 3 evidence before lifecycle mutates the deployed profiles", async () => {
+    const verification = await readFile(resolve(workspaceRoot, "scripts/verify/verify.ts"), "utf8");
+    const removeStaleReport = verification.indexOf("await rm(phase3ReportPath, { force: true })");
+    const phase3Call = verification.indexOf(
+      "const real = runRealOpenClawVerifier()",
+      removeStaleReport,
+    );
+    const remoteCall = verification.indexOf("const remoteResult = runRemoteScript(", phase3Call);
+    expect(removeStaleReport).toBeGreaterThan(-1);
+    expect(phase3Call).toBeGreaterThan(removeStaleReport);
+    expect(remoteCall).toBeGreaterThan(phase3Call);
+  });
 });

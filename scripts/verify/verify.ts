@@ -562,6 +562,18 @@ async function main(): Promise<void> {
   const suite = parseSuite(process.argv[2]);
   const config = await loadConfig();
   await prepareRemoteTransport();
+
+  let realOpenClawTests: readonly JsonRecord[] = [];
+  let realStatus: string | null = null;
+  let realExitCode = 0;
+  if (suite === "all") {
+    await rm(phase3ReportPath, { force: true });
+    const real = runRealOpenClawVerifier();
+    realExitCode = real.exitCode;
+    realStatus = typeof real.report["status"] === "string" ? real.report["status"] : "FAIL";
+    realOpenClawTests = realTests(real.report);
+  }
+
   const remoteResult = runRemoteScript(
     config,
     `verify-${suite}`,
@@ -579,14 +591,8 @@ async function main(): Promise<void> {
   }
   const remote = parseJsonObject(remoteResult.stdout, `remote ${suite} verification`);
 
-  let realOpenClawTests: readonly JsonRecord[] = [];
-  let realStatus: string | null = null;
-  let realExitCode = 0;
   if (suite === "all") {
-    const real = runRealOpenClawVerifier();
-    realExitCode = real.exitCode;
-    realStatus = typeof real.report["status"] === "string" ? real.report["status"] : "FAIL";
-    realOpenClawTests = [...recordArray(remote["real_openclaw_tests"]), ...realTests(real.report)];
+    realOpenClawTests = [...recordArray(remote["real_openclaw_tests"]), ...realOpenClawTests];
   }
 
   const passed =
