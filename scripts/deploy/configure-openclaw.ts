@@ -235,6 +235,57 @@ if [ "$gateway_ready" != yes ]; then
   exit 3
 fi
 
+admin_probe_params=$(jq -cn '{key:"agent:main:agentnest-admin-scope-validation",deleteTranscript:true}')
+if ! openclaw gateway call sessions.delete --params "$admin_probe_params" --json --timeout 30000 >/dev/null 2>&1; then
+  if ! node --input-type=module - "$state_dir" <<'NODE'
+import { execFileSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const stateDir = process.argv[2];
+const globalRoot = execFileSync("npm", ["root", "-g"], { encoding: "utf8" }).trim();
+const packageRoot = resolve(globalRoot, "openclaw");
+const manifest = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
+const exportedPath = manifest.exports?.["./plugin-sdk/device-bootstrap"]?.default;
+if (typeof exportedPath !== "string" || !exportedPath.startsWith("./dist/")) {
+  throw new Error("OpenClaw device-bootstrap public export is unavailable");
+}
+const api = await import(pathToFileURL(resolve(packageRoot, exportedPath)).href);
+const list = await api.listDevicePairing(stateDir);
+const target = list.paired.find((device) =>
+  (device.scopes ?? []).includes("operator.write") ||
+  Object.values(device.tokens ?? {}).some((token) => token.scopes.includes("operator.write")),
+);
+const pending = list.pending
+  .filter(
+    (request) =>
+      request.deviceId === target?.deviceId &&
+      (request.scopes ?? []).includes("operator.admin"),
+  )
+  .sort((left, right) => right.ts - left.ts)[0];
+if (!pending) {
+  throw new Error("OpenClaw operator.admin scope request was not found");
+}
+const approved = await api.approveDevicePairing(
+  pending.requestId,
+  { callerScopes: ["operator.admin"] },
+  stateDir,
+);
+if (approved?.status !== "approved") {
+  throw new Error("OpenClaw operator.admin scope request was not approved");
+}
+NODE
+  then
+    printf 'CONFIGURE_FAILED_STAGE=gateway_admin_scope_approval\n'
+    exit 9
+  fi
+  if ! openclaw gateway call sessions.delete --params "$admin_probe_params" --json --timeout 30000 >/dev/null 2>&1; then
+    printf 'CONFIGURE_FAILED_STAGE=gateway_admin_scope_validation\n'
+    exit 10
+  fi
+fi
+
 observed_count=$(openclaw agents list --json | jq 'length')
 expected_count=$(jq '.profiles | length' "$payload")
 if [ "$observed_count" -ne "$expected_count" ]; then

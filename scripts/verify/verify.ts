@@ -23,6 +23,8 @@ const phase3ReportPath = resolve(workspaceRoot, "artifacts/reports/phase-3-remot
 const remoteVerificationScript = String.raw`set -Eeuo pipefail
 workdir=$1
 suite=$2
+verify_stage=initialization
+trap 'printf "VERIFY_REMOTE_FAILED_STAGE=%s\n" "$verify_stage"' ERR
 case "$workdir" in /*) ;; *) exit 20 ;; esac
 test "$(cat "$workdir/.agentnest-project")" = agentnest-demo
 source_dir="$workdir/source"
@@ -64,13 +66,27 @@ postgres_adapter_pass=true
 memory_isolation_pass=true
 deny_no_side_effect_pass=true
 
+postgres_value() {
+  sql=$1
+  shift
+  printf '%s\n' "$sql" | compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@" 2>/dev/null | tr -d '\r'
+}
+
+postgres_execute() {
+  sql=$1
+  shift
+  printf '%s\n' "$sql" | compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@" >/dev/null 2>&1
+}
+
 if [ "$isolation_selected" = true ]; then
+  verify_stage=isolation_suite
   if ! compose run -T --rm --no-deps --user node -e HOME=/tmp control-plane pnpm test:isolation </dev/null > "$reports/isolation-suite.log" 2>&1; then
     isolation_pass=false
   fi
 fi
 
 if [ "$suite" = all ]; then
+  verify_stage=postgres_adapter_suite
   if ! compose run -T --rm --no-deps --user node -e HOME=/tmp control-plane sh -c \
     'AGENTNEST_TEST_DATABASE_URL="$DATABASE_URL" pnpm exec vitest run --config vitest.integration.config.ts tests/integration/postgres-phase6-real.integration.test.ts' \
     </dev/null \
@@ -121,8 +137,8 @@ run_control_task() {
   if [ "$status" != COMPLETED ]; then return 1; fi
   attempt=0
   while [ "$attempt" -lt 30 ]; do
-    operation_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v task_id="$task_id" -v expected_tool="$expected_tool" -c "SELECT count(*) FROM demo_gateway_operation WHERE task_id = :'task_id' AND tool_name = :'expected_tool' AND action = 'write'" </dev/null 2>/dev/null || printf 0)
-    trace_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v task_id="$task_id" -v expected_tool="$expected_tool" -c "SELECT count(*) FROM gateway_trace_event WHERE task_id = :'task_id' AND tool_name = :'expected_tool' AND action = 'write' AND decision = 'ALLOW'" </dev/null 2>/dev/null || printf 0)
+    operation_count=$(postgres_value "SELECT count(*) FROM demo_gateway_operation WHERE task_id = :'task_id' AND tool_name = :'expected_tool' AND action = 'write'" -v task_id="$task_id" -v expected_tool="$expected_tool" || printf 0)
+    trace_count=$(postgres_value "SELECT count(*) FROM gateway_trace_event WHERE task_id = :'task_id' AND tool_name = :'expected_tool' AND action = 'write' AND decision = 'ALLOW'" -v task_id="$task_id" -v expected_tool="$expected_tool" || printf 0)
     if [ "$operation_count" -ge 1 ] 2>/dev/null && [ "$trace_count" -ge 1 ] 2>/dev/null; then return 0; fi
     attempt=$((attempt + 1))
     sleep 2
@@ -131,6 +147,7 @@ run_control_task() {
 }
 
 if [ "$control_chain_selected" = true ]; then
+  verify_stage=control_plane_real_chains
   if ! run_control_task tenant_A LEGAL LEGAL_EVIDENCE_CHECK CASE case_001 legal_analysis_write legal-tenant-a; then
     control_legal_pass=false
     control_legal_provider_blocked=$last_control_provider_blocked
@@ -151,10 +168,6 @@ if [ "$control_chain_selected" = true ]; then
   fi
 fi
 
-postgres_value() {
-  compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@" </dev/null 2>/dev/null | tr -d '\r'
-}
-
 write_memory_canary() {
   tenant=$1
   biz=$2
@@ -162,11 +175,8 @@ write_memory_canary() {
   own=$4
   forbidden_one=$5
   forbidden_two=$6
-  row=$(compose exec -T postgres psql -At -F '|' -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-    -v tenant="$tenant" -v biz="$biz" \
-    -c "SELECT logical_agent_id, runtime_instance_id, session_id, task_id FROM agent_task WHERE tenant_id = :'tenant' AND biz_domain = :'biz' ORDER BY created_at DESC LIMIT 1" \
-    </dev/null \
-    2>/dev/null | tr -d '\r')
+  row=$(postgres_value "SELECT logical_agent_id, runtime_instance_id, session_id, task_id FROM agent_task WHERE tenant_id = :'tenant' AND biz_domain = :'biz' ORDER BY created_at DESC LIMIT 1" \
+    -F '|' -v tenant="$tenant" -v biz="$biz")
   if [ -z "$row" ]; then return 1; fi
   old_ifs=$IFS
   IFS='|'
@@ -177,13 +187,11 @@ write_memory_canary() {
   session_id=$3
   task_id=$4
   if [ -z "$logical_agent_id" ] || [ -z "$runtime_instance_id" ] || [ -z "$session_id" ] || [ -z "$task_id" ]; then return 1; fi
-  if ! compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  if ! postgres_execute "DELETE FROM agent_memory WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND dedupe_key = 'phase6-memory-canary'; INSERT INTO agent_memory (tenant_id, biz_domain, memory_id, logical_agent_id, runtime_instance_id, session_id, task_id, dedupe_key, memory_type, resource_type, resource_id, content, created_at, updated_at) VALUES (:'tenant', :'biz', ('00000000-0000-4000-8000-' || substr(md5(:'tenant' || ':' || :'biz' || ':phase6-memory-canary'), 1, 12))::uuid, :'logical_agent_id', :'runtime_instance_id', :'session_id', :'task_id', 'phase6-memory-canary', 'DEMO_CANARY', NULL, NULL, :'canary', now(), now())" \
     -v tenant="$tenant" -v biz="$biz" -v logical_agent_id="$logical_agent_id" \
     -v runtime_instance_id="$runtime_instance_id" -v session_id="$session_id" \
     -v task_id="$task_id" -v canary="$own" \
-    -c "DELETE FROM agent_memory WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND dedupe_key = 'phase6-memory-canary'; INSERT INTO agent_memory (tenant_id, biz_domain, memory_id, logical_agent_id, runtime_instance_id, session_id, task_id, dedupe_key, memory_type, resource_type, resource_id, content, created_at, updated_at) VALUES (:'tenant', :'biz', ('00000000-0000-4000-8000-' || substr(md5(:'tenant' || ':' || :'biz' || ':phase6-memory-canary'), 1, 12))::uuid, :'logical_agent_id', :'runtime_instance_id', :'session_id', :'task_id', 'phase6-memory-canary', 'DEMO_CANARY', NULL, NULL, :'canary', now(), now())" \
-    </dev/null \
-    >/dev/null 2>&1; then return 1; fi
+    ; then return 1; fi
   response_file="$reports/memory-$label-response.json"
   if ! curl -fsS -H 'X-Request-Id: phase6-memory-canary' \
     "http://127.0.0.1:$CONTROL_PLANE_PORT/api/agents/$logical_agent_id/memories?request_id=phase6-memory-$label&tenant_id=$tenant&biz_domain=$biz" \
@@ -203,22 +211,19 @@ verify_memory_isolation() {
 }
 
 verify_deny_no_side_effect() {
-  context_id=$(postgres_value -v tenant=tenant_A -v biz=LEGAL \
-    -c "SELECT execution_context_id FROM execution_context WHERE tenant_id = :'tenant' AND biz_domain = :'biz' ORDER BY created_at DESC LIMIT 1")
+  context_id=$(postgres_value "SELECT execution_context_id FROM execution_context WHERE tenant_id = :'tenant' AND biz_domain = :'biz' ORDER BY created_at DESC LIMIT 1" \
+    -v tenant=tenant_A -v biz=LEGAL)
   if ! printf '%s' "$context_id" | grep -Eqi '^[0-9a-f-]{36}$'; then return 1; fi
   deny_trace="phase6-deny-$(date +%s)-$$"
-  before_count=$(postgres_value -v trace_id="$deny_trace" \
-    -c "SELECT count(*) FROM demo_gateway_operation WHERE trace_id = :'trace_id'")
+  before_count=$(postgres_value "SELECT count(*) FROM demo_gateway_operation WHERE trace_id = :'trace_id'" -v trace_id="$deny_trace")
   body=$(jq -nc --arg context_id "$context_id" --arg trace_id "$deny_trace" \
     '{request_id:$trace_id,trace_id:$trace_id,execution_context_id:$context_id,tool_name:"legal_analysis_write",action:"write",resource:{resource_type:"CASE",resource_id:"case_B_only"},params:{analysis:"this write must be denied"}}')
   response_file="$reports/deny-no-side-effect-response.json"
   http_code=$(curl -sS -o "$response_file" -w '%{http_code}' \
     -H 'Content-Type: application/json' -H 'X-Request-Id: phase6-deny' \
     -d "$body" "http://127.0.0.1:$DATA_GATEWAY_MOCK_PORT/v1/tools/execute" || printf 000)
-  after_count=$(postgres_value -v trace_id="$deny_trace" \
-    -c "SELECT count(*) FROM demo_gateway_operation WHERE trace_id = :'trace_id'")
-  deny_trace_count=$(postgres_value -v trace_id="$deny_trace" \
-    -c "SELECT count(*) FROM gateway_trace_event WHERE trace_id = :'trace_id' AND decision = 'DENY' AND reason = 'RESOURCE_SCOPE_DENIED'")
+  after_count=$(postgres_value "SELECT count(*) FROM demo_gateway_operation WHERE trace_id = :'trace_id'" -v trace_id="$deny_trace")
+  deny_trace_count=$(postgres_value "SELECT count(*) FROM gateway_trace_event WHERE trace_id = :'trace_id' AND decision = 'DENY' AND reason = 'RESOURCE_SCOPE_DENIED'" -v trace_id="$deny_trace")
   jq -n --arg http_code "$http_code" --arg before "$before_count" --arg after "$after_count" \
     --arg deny_trace_count "$deny_trace_count" \
     '{schema_version:"1.0",http_status:($http_code|tonumber),operation_count_before:($before|tonumber),operation_count_after:($after|tonumber),deny_trace_count:($deny_trace_count|tonumber),expected_reason:"RESOURCE_SCOPE_DENIED"}' \
@@ -229,6 +234,7 @@ verify_deny_no_side_effect() {
 }
 
 if [ "$suite" = all ]; then
+  verify_stage=memory_and_deny_isolation
   if ! verify_memory_isolation; then memory_isolation_pass=false; fi
   if ! verify_deny_no_side_effect; then deny_no_side_effect_pass=false; fi
 fi
@@ -244,11 +250,14 @@ post_json() {
 }
 
 if [ "$lifecycle_selected" = true ]; then
+  verify_stage=lifecycle_verification
   lifecycle_memory_pass=true
+  verify_stage=lifecycle_suite
   if ! compose run -T --rm --no-deps --user node -e HOME=/tmp control-plane pnpm test:lifecycle </dev/null > "$reports/lifecycle-suite.log" 2>&1; then
     lifecycle_suite_pass=false
   fi
-  eligible_l2=$(postgres_value -c "SELECT count(*) FROM agent_task WHERE unloaded_at IS NULL AND status IN ('COMPLETED', 'FAILED', 'CHECKPOINTED')")
+  verify_stage=lifecycle_eligible_query
+  eligible_l2=$(postgres_value "SELECT count(*) FROM agent_task WHERE unloaded_at IS NULL AND status IN ('COMPLETED', 'FAILED', 'CHECKPOINTED')")
   if [ "$eligible_l2" -lt 1 ] 2>/dev/null; then
     lifecycle_seed_id="phase6-lifecycle-seed-$(date +%s)-$$"
     lifecycle_seed_body=$(jq -nc --arg request_id "$lifecycle_seed_id" \
@@ -259,11 +268,9 @@ if [ "$lifecycle_selected" = true ]; then
     case "$lifecycle_seed_code" in 200|201|202|502|503) ;; *) lifecycle_api_pass=false ;; esac
   fi
 
-  before_row=$(compose exec -T postgres psql -At -F '|' -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-    -v tenant=tenant_A -v biz=LEGAL \
-    -c "SELECT agent.logical_agent_id, agent.current_runtime_instance_id, (SELECT task.task_id FROM agent_task AS task WHERE task.tenant_id = agent.tenant_id AND task.biz_domain = agent.biz_domain AND task.logical_agent_id = agent.logical_agent_id ORDER BY task.created_at DESC LIMIT 1) FROM tenant_biz_agent AS agent WHERE agent.tenant_id = :'tenant' AND agent.biz_domain = :'biz'" \
-    </dev/null \
-    2>/dev/null | tr -d '\r')
+  verify_stage=lifecycle_before_row
+  before_row=$(postgres_value "SELECT agent.logical_agent_id, agent.current_runtime_instance_id, (SELECT task.task_id FROM agent_task AS task WHERE task.tenant_id = agent.tenant_id AND task.biz_domain = agent.biz_domain AND task.logical_agent_id = agent.logical_agent_id ORDER BY task.created_at DESC LIMIT 1) FROM tenant_biz_agent AS agent WHERE agent.tenant_id = :'tenant' AND agent.biz_domain = :'biz'" \
+    -F '|' -v tenant=tenant_A -v biz=LEGAL)
   old_ifs=$IFS
   IFS='|'
   set -- $before_row
@@ -273,21 +280,26 @@ if [ "$lifecycle_selected" = true ]; then
   lifecycle_before_task_id=
   if [ "$#" -ge 3 ]; then lifecycle_logical_id=$1; lifecycle_before_runtime=$2; lifecycle_before_task_id=$3; fi
   if [ -z "$lifecycle_logical_id" ] || [ -z "$lifecycle_before_runtime" ] || [ -z "$lifecycle_before_task_id" ]; then lifecycle_api_pass=false; fi
+  verify_stage=lifecycle_memory_seed
   if ! write_memory_canary tenant_A LEGAL lifecycle-tenant-a-legal PHASE6_CANARY_TENANT_A_LEGAL PHASE6_CANARY_TENANT_A_ROBOT_DOG PHASE6_CANARY_TENANT_B_LEGAL; then lifecycle_api_pass=false; lifecycle_memory_pass=false; fi
-  original_operation_count=$(postgres_value -v tenant=tenant_A -v biz=LEGAL -v task_id="$lifecycle_before_task_id" \
-    -c "SELECT count(*) FROM demo_gateway_operation WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND task_id = :'task_id' AND action = 'write'")
+  verify_stage=lifecycle_original_operation_query
+  original_operation_count=$(postgres_value "SELECT count(*) FROM demo_gateway_operation WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND task_id = :'task_id' AND action = 'write'" \
+    -v tenant=tenant_A -v biz=LEGAL -v task_id="$lifecycle_before_task_id")
 
   l2_clock_file="$reports/lifecycle-l2-clock.json"
   l2_reaper_file="$reports/lifecycle-l2-reaper.json"
   l1_clock_file="$reports/lifecycle-l1-clock.json"
   l1_reaper_file="$reports/lifecycle-l1-reaper.json"
+  verify_stage=lifecycle_l2_reaper
   if ! post_json /api/admin/clock/advance '{"request_id":"verify-l2-clock","idempotency_key":"verify-l2-clock","seconds":3600}' > "$l2_clock_file"; then lifecycle_api_pass=false; fi
   if ! post_json /api/admin/reaper/run '{"request_id":"verify-l2-reaper","idempotency_key":"verify-l2-reaper"}' > "$l2_reaper_file"; then lifecycle_api_pass=false; fi
   if ! jq -e '.success == true and .data.failed == 0 and .data.l2_unloaded >= 1' "$l2_reaper_file" >/dev/null 2>&1; then lifecycle_api_pass=false; fi
+  verify_stage=lifecycle_l1_reaper
   if ! post_json /api/admin/clock/advance '{"request_id":"verify-l1-clock","idempotency_key":"verify-l1-clock","seconds":82800}' > "$l1_clock_file"; then lifecycle_api_pass=false; fi
   if ! post_json /api/admin/reaper/run '{"request_id":"verify-l1-reaper","idempotency_key":"verify-l1-reaper"}' > "$l1_reaper_file"; then lifecycle_api_pass=false; fi
   if ! jq -e '.success == true and .data.failed == 0 and .data.l1_unloaded >= 1' "$l1_reaper_file" >/dev/null 2>&1; then lifecycle_api_pass=false; fi
 
+  verify_stage=lifecycle_restore_request
   lifecycle_restore_id="phase6-lifecycle-restore-$(date +%s)-$$"
   lifecycle_restore_body=$(jq -nc --arg request_id "$lifecycle_restore_id" \
     '{request_id:$request_id,idempotency_key:$request_id,tenant_id:"tenant_A",biz_domain:"LEGAL",task_type:"LEGAL_EVIDENCE_CHECK",resource:{resource_type:"CASE",resource_id:"case_001"},input:{instruction:"Restore the unloaded Demo runtime and preserve its scoped summary."}}')
@@ -299,11 +311,9 @@ if [ "$lifecycle_selected" = true ]; then
   lifecycle_restore_task_id=$(jq -r '.data.task_id // .error.task_id // empty' "$lifecycle_restore_file" 2>/dev/null || true)
   if ! printf '%s' "$lifecycle_restore_task_id" | grep -Eq '^task_[a-f0-9]{24}$'; then lifecycle_api_pass=false; fi
 
-  after_row=$(compose exec -T postgres psql -At -F '|' -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-    -v tenant=tenant_A -v biz=LEGAL \
-    -c "SELECT agent.logical_agent_id, agent.current_runtime_instance_id, runtime.restored_from_runtime_instance_id FROM tenant_biz_agent AS agent JOIN agent_runtime_instance AS runtime ON runtime.logical_agent_id = agent.logical_agent_id AND runtime.runtime_instance_id = agent.current_runtime_instance_id WHERE agent.tenant_id = :'tenant' AND agent.biz_domain = :'biz'" \
-    </dev/null \
-    2>/dev/null | tr -d '\r')
+  verify_stage=lifecycle_after_row
+  after_row=$(postgres_value "SELECT agent.logical_agent_id, agent.current_runtime_instance_id, runtime.restored_from_runtime_instance_id FROM tenant_biz_agent AS agent JOIN agent_runtime_instance AS runtime ON runtime.logical_agent_id = agent.logical_agent_id AND runtime.runtime_instance_id = agent.current_runtime_instance_id WHERE agent.tenant_id = :'tenant' AND agent.biz_domain = :'biz'" \
+    -F '|' -v tenant=tenant_A -v biz=LEGAL)
   old_ifs=$IFS
   IFS='|'
   set -- $after_row
@@ -318,21 +328,21 @@ if [ "$lifecycle_selected" = true ]; then
      [ "$lifecycle_restored_from" != "$lifecycle_before_runtime" ]; then
     lifecycle_api_pass=false
   fi
-  lifecycle_restore_trace_count=$(postgres_value -v tenant=tenant_A -v biz=LEGAL \
-    -v task_id="$lifecycle_restore_task_id" -v restored_from="$lifecycle_before_runtime" \
-    -c "SELECT count(*) FROM agent_trace WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND task_id = :'task_id' AND event_json ->> 'restored_from_runtime_instance_id' = :'restored_from'")
+  verify_stage=lifecycle_restore_evidence
+  lifecycle_restore_trace_count=$(postgres_value "SELECT count(*) FROM agent_trace WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND task_id = :'task_id' AND event_json ->> 'restored_from_runtime_instance_id' = :'restored_from'" \
+    -v tenant=tenant_A -v biz=LEGAL -v task_id="$lifecycle_restore_task_id" -v restored_from="$lifecycle_before_runtime")
   if [ "$lifecycle_restore_trace_count" -lt 1 ] 2>/dev/null; then lifecycle_api_pass=false; fi
   lifecycle_memory_file="$reports/lifecycle-restored-memory.json"
   if ! curl -fsS -H 'X-Request-Id: phase6-lifecycle-memory' \
     "http://127.0.0.1:$CONTROL_PLANE_PORT/api/agents/$lifecycle_logical_id/memories?request_id=phase6-lifecycle-memory&tenant_id=tenant_A&biz_domain=LEGAL" \
     -o "$lifecycle_memory_file"; then lifecycle_api_pass=false; lifecycle_memory_pass=false; fi
   if ! jq -e '[.data[]?.content] | index("PHASE6_CANARY_TENANT_A_LEGAL") != null' "$lifecycle_memory_file" >/dev/null 2>&1; then lifecycle_api_pass=false; lifecycle_memory_pass=false; fi
-  restored_original_operation_count=$(postgres_value -v tenant=tenant_A -v biz=LEGAL -v task_id="$lifecycle_before_task_id" \
-    -c "SELECT count(*) FROM demo_gateway_operation WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND task_id = :'task_id' AND action = 'write'")
-  restored_summary_count=$(postgres_value -v tenant=tenant_A -v biz=LEGAL -v task_id="$lifecycle_before_task_id" \
-    -c "SELECT count(*) FROM agent_session_summary WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND task_id = :'task_id'")
-  restored_checkpoint_count=$(postgres_value -v tenant=tenant_A -v biz=LEGAL -v runtime_id="$lifecycle_before_runtime" \
-    -c "SELECT count(*) FROM agent_checkpoint_artifact WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND runtime_instance_id = :'runtime_id' AND checkpoint_level = 'L1'")
+  restored_original_operation_count=$(postgres_value "SELECT count(*) FROM demo_gateway_operation WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND task_id = :'task_id' AND action = 'write'" \
+    -v tenant=tenant_A -v biz=LEGAL -v task_id="$lifecycle_before_task_id")
+  restored_summary_count=$(postgres_value "SELECT count(*) FROM agent_session_summary WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND task_id = :'task_id'" \
+    -v tenant=tenant_A -v biz=LEGAL -v task_id="$lifecycle_before_task_id")
+  restored_checkpoint_count=$(postgres_value "SELECT count(*) FROM agent_checkpoint_artifact WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND runtime_instance_id = :'runtime_id' AND checkpoint_level = 'L1'" \
+    -v tenant=tenant_A -v biz=LEGAL -v runtime_id="$lifecycle_before_runtime")
   if [ "$restored_original_operation_count" != "$original_operation_count" ] || \
      [ "$restored_summary_count" -lt 1 ] 2>/dev/null || \
      [ "$restored_checkpoint_count" -lt 1 ] 2>/dev/null; then
@@ -342,6 +352,7 @@ if [ "$lifecycle_selected" = true ]; then
   l1_unloaded=$(jq -r '.data.l1_unloaded // 0' "$l1_reaper_file" 2>/dev/null || printf 0)
   l2_reaper_failed=$(jq -r '.data.failed // -1' "$l2_reaper_file" 2>/dev/null || printf -- -1)
   l1_reaper_failed=$(jq -r '.data.failed // -1' "$l1_reaper_file" 2>/dev/null || printf -- -1)
+  verify_stage=lifecycle_report
   jq -n \
     --argjson passed "$lifecycle_api_pass" \
     --arg logical_agent_id "$lifecycle_logical_id" \
@@ -363,17 +374,18 @@ if [ "$lifecycle_selected" = true ]; then
 fi
 
 if [ "$recovery_selected" = true ]; then
+  verify_stage=recovery_verification
   recovery_log="$reports/recovery-suite.log"
   : > "$recovery_log"
   control_restart_pass=true
   openclaw_restart_pass=true
-  before_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c 'SELECT count(*) FROM tenant_biz_agent' </dev/null 2>> "$recovery_log" || printf unavailable)
+  before_count=$(postgres_value 'SELECT count(*) FROM tenant_biz_agent' 2>> "$recovery_log" || printf unavailable)
   if ! compose restart control-plane >> "$recovery_log" 2>&1; then recovery_pass=false; control_restart_pass=false; fi
   attempt=0
   until curl -fsS -H 'X-Request-Id: recovery-health' "http://127.0.0.1:$CONTROL_PLANE_PORT/health" >> "$recovery_log" 2>&1; do
     attempt=$((attempt + 1)); if [ "$attempt" -ge 45 ]; then recovery_pass=false; control_restart_pass=false; break; fi; sleep 2
   done
-  after_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c 'SELECT count(*) FROM tenant_biz_agent' </dev/null 2>> "$recovery_log" || printf unavailable)
+  after_count=$(postgres_value 'SELECT count(*) FROM tenant_biz_agent' 2>> "$recovery_log" || printf unavailable)
   if [ "$before_count" = unavailable ] || [ "$before_count" != "$after_count" ]; then recovery_pass=false; fi
   if ! curl -fsS -H 'X-Request-Id: recovery-agents' "http://127.0.0.1:$CONTROL_PLANE_PORT/api/agents?request_id=recovery-agents&tenant_id=tenant_A&biz_domain=LEGAL" >> "$recovery_log" 2>&1; then recovery_pass=false; fi
 
@@ -395,8 +407,8 @@ if [ "$recovery_selected" = true ]; then
   case "$recovery_http_code" in 200|201|202|503) ;; *) recovery_pass=false ;; esac
   recovery_task_id=$(jq -r '.data.task_id // .error.task_id // empty' "$recovery_response" 2>/dev/null || true)
   if ! printf '%s' "$recovery_task_id" | grep -Eq '^task_[a-f0-9]{24}$'; then recovery_pass=false; fi
-  recovery_task_runtime_count=$(postgres_value -v task_id="$recovery_task_id" -v tenant=tenant_B -v biz=LEGAL \
-    -c "SELECT count(*) FROM agent_task AS task JOIN agent_runtime_instance AS runtime ON runtime.logical_agent_id = task.logical_agent_id AND runtime.runtime_instance_id = task.runtime_instance_id WHERE task.tenant_id = :'tenant' AND task.biz_domain = :'biz' AND task.task_id = :'task_id'")
+  recovery_task_runtime_count=$(postgres_value "SELECT count(*) FROM agent_task AS task JOIN agent_runtime_instance AS runtime ON runtime.logical_agent_id = task.logical_agent_id AND runtime.runtime_instance_id = task.runtime_instance_id WHERE task.tenant_id = :'tenant' AND task.biz_domain = :'biz' AND task.task_id = :'task_id'" \
+    -v task_id="$recovery_task_id" -v tenant=tenant_B -v biz=LEGAL)
   if [ "$recovery_task_runtime_count" != 1 ]; then recovery_pass=false; fi
   recovery_reaper_file="$reports/recovery-reaper.json"
   if ! post_json /api/admin/reaper/run '{"request_id":"verify-recovery-reaper","idempotency_key":"verify-recovery-reaper"}' > "$recovery_reaper_file"; then recovery_pass=false; fi
@@ -412,6 +424,7 @@ if [ "$recovery_selected" = true ]; then
     > "$reports/recovery-suite.json"
 fi
 
+verify_stage=verification_report
 overall=true
 platform_passed=true
 if [ "$isolation_selected" = true ] && [ "$isolation_pass" != true ]; then overall=false; platform_passed=false; fi
@@ -463,6 +476,7 @@ jq -n \
       {name:"deployed_ttl_unload_and_runtime_restore",status:(if $lifecycle_api_pass then "PASS" else "FAIL" end),evidence:"reports/lifecycle-admin-api.json"}
     ] else [] end),
     recovery_tests:(if $recovery_selected then [{name:"postgres_control_plane_openclaw_restart_and_new_task",status:(if $recovery_pass then "PASS" else "FAIL" end),evidence:"reports/recovery-suite.json"}] else [] end)}'
+trap - ERR
 `;
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -555,7 +569,12 @@ async function main(): Promise<void> {
     { timeoutMs: 30 * 60 * 1_000, maxBufferBytes: 8 * 1_024 * 1_024 },
   );
   if (remoteResult.status !== 0) {
-    throw new Error(`remote ${suite} verification could not run`);
+    const failedStage = /^VERIFY_REMOTE_FAILED_STAGE=([A-Za-z0-9_-]+)$/mu.exec(
+      remoteResult.stdout,
+    )?.[1];
+    throw new Error(
+      `remote ${suite} verification could not run at ${failedStage ?? "unknown stage"}`,
+    );
   }
   const remote = parseJsonObject(remoteResult.stdout, `remote ${suite} verification`);
 

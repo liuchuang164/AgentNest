@@ -19,7 +19,7 @@ describe("Phase 6 remote shell transport", () => {
         }
         const command = lines.slice(index, index + 6).join("\n");
         expect(command, `${relativePath}:${(index + 1).toString()}`).toMatch(
-          /<(?:\/dev\/null|\s*"\$sql")/u,
+          /(?:<(?:\/dev\/null|\s*"\$sql")|printf [^\n]+\| compose)/u,
         );
       }
     }
@@ -34,5 +34,15 @@ describe("Phase 6 remote shell transport", () => {
     const dockerfile = await readFile(resolve(workspaceRoot, "Dockerfile"), "utf8");
     expect(dockerfile).toContain("RUN chown node:node /app");
     expect(dockerfile).toMatch(/USER node\s*$/u);
+  });
+
+  it("approves the stable gateway admin scope through OpenClaw's public device API", async () => {
+    const configuration = await readFile(
+      resolve(workspaceRoot, "scripts/deploy/configure-openclaw.ts"),
+      "utf8",
+    );
+    expect(configuration).toContain('manifest.exports?.["./plugin-sdk/device-bootstrap"]');
+    expect(configuration).toContain('callerScopes: ["operator.admin"]');
+    expect(configuration).toContain("openclaw gateway call sessions.delete");
   });
 });
