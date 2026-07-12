@@ -232,17 +232,6 @@ export interface TaskRestoreContextLoader {
   }): Promise<TaskJsonObject>;
 }
 
-function terminalTaskStatus(run: OpenClawAgentRunResult): L2TaskStatus {
-  const status = run.status?.trim().toLowerCase();
-  if (status === "completed" || status === "succeeded") {
-    return L2TaskStatus.COMPLETED;
-  }
-  if (status === "accepted" || status === "pending" || status === "running") {
-    return L2TaskStatus.RUNNING;
-  }
-  return L2TaskStatus.FAILED;
-}
-
 function findChildSessionKey(value: unknown, l2AgentId: string): string | null {
   const visited = new WeakSet<object>();
   const pending: unknown[] = [value];
@@ -630,7 +619,7 @@ export class TaskOrchestrator {
   ): Promise<L2TaskStatus> {
     const childSessionKey = findChildSessionKey(run.raw, l2AgentId);
     if (childSessionKey === null) {
-      return terminalTaskStatus(run);
+      return L2TaskStatus.FAILED;
     }
     if (this.#childCompletionTimeoutMs === 0) {
       return L2TaskStatus.RUNNING;
