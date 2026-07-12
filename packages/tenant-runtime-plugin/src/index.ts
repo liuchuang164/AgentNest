@@ -218,19 +218,45 @@ interface ExecutionContextBinding {
   readonly agentId: string;
 }
 
+interface ExecutionContextBindingIdentity {
+  readonly sessionKey: string | undefined;
+  readonly sessionId: string | undefined;
+}
+
+function bindingKey(identity: ExecutionContextBindingIdentity): string | null {
+  if (identity.sessionId !== undefined) {
+    return identity.sessionId.length === 0 ? null : `id:${identity.sessionId}`;
+  }
+  if (identity.sessionKey !== undefined) {
+    return identity.sessionKey.length === 0 ? null : `key:${identity.sessionKey}`;
+  }
+  return null;
+}
+
 export class ExecutionContextBindingCache {
   readonly #bindings = new Map<string, ExecutionContextBinding>();
 
-  public bind(sessionKey: string, agentId: string, executionContextId: string): void {
-    this.#bindings.set(sessionKey, Object.freeze({ executionContextId, agentId }));
+  public bind(
+    identity: ExecutionContextBindingIdentity,
+    agentId: string,
+    executionContextId: string,
+  ): void {
+    const key = bindingKey(identity);
+    if (key !== null) {
+      this.#bindings.set(key, Object.freeze({ executionContextId, agentId }));
+    }
   }
 
-  public clear(sessionKey: string): void {
-    this.#bindings.delete(sessionKey);
+  public clear(identity: ExecutionContextBindingIdentity): void {
+    const key = bindingKey(identity);
+    if (key !== null) {
+      this.#bindings.delete(key);
+    }
   }
 
-  public resolve(sessionKey: string, agentId: string): string | null {
-    const binding = this.#bindings.get(sessionKey);
+  public resolve(identity: ExecutionContextBindingIdentity, agentId: string): string | null {
+    const key = bindingKey(identity);
+    const binding = key === null ? undefined : this.#bindings.get(key);
     return binding?.agentId === agentId ? binding.executionContextId : null;
   }
 }
@@ -250,6 +276,7 @@ export type GatewayFetch = (url: string, init: RequestInit) => Promise<Response>
 export interface TrustedAgentRunContext {
   readonly agentId?: string;
   readonly sessionKey?: string;
+  readonly sessionId?: string;
 }
 
 export type InputGateDecision =
@@ -407,16 +434,17 @@ export class TenantRuntimePluginRuntime {
   }
 
   public beforeAgentRun(prompt: string, context: TrustedAgentRunContext): InputGateDecision {
-    const { agentId, sessionKey } = context;
-    if (agentId === undefined || sessionKey === undefined) {
+    const { agentId, sessionKey, sessionId } = context;
+    const identity = { sessionKey, sessionId };
+    if (agentId === undefined || bindingKey(identity) === null) {
       return { outcome: "pass" };
     }
     const scope = this.#config?.agentScopes[agentId];
     if (scope === undefined) {
-      this.#bindings.clear(sessionKey);
+      this.#bindings.clear(identity);
       return { outcome: "pass" };
     }
-    this.#bindings.clear(sessionKey);
+    this.#bindings.clear(identity);
     const executionContextId = parseControllerEnvelope(prompt);
     if (executionContextId === null) {
       return {
@@ -426,7 +454,7 @@ export class TenantRuntimePluginRuntime {
         category: "agentnest_context_missing",
       };
     }
-    this.#bindings.bind(sessionKey, agentId, executionContextId);
+    this.#bindings.bind(identity, agentId, executionContextId);
     return { outcome: "pass" };
   }
 
@@ -437,6 +465,7 @@ export class TenantRuntimePluginRuntime {
     const definition = businessToolDefinitions[name];
     const agentId = context.agentId;
     const sessionKey = context.sessionKey;
+    const sessionId = context.sessionId;
     if (this.#config === null || agentId === undefined || sessionKey === undefined) {
       return null;
     }
@@ -453,7 +482,7 @@ export class TenantRuntimePluginRuntime {
         if (!Value.Check(definition.parameters, params) || !isRecord(params)) {
           throw new TenantRuntimeToolDeniedError("TOOL_INPUT_INVALID");
         }
-        const executionContextId = this.#bindings.resolve(sessionKey, agentId);
+        const executionContextId = this.#bindings.resolve({ sessionKey, sessionId }, agentId);
         if (executionContextId === null) {
           throw new TenantRuntimeToolDeniedError("EXECUTION_CONTEXT_BINDING_MISSING");
         }

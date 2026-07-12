@@ -210,6 +210,42 @@ describe("AgentNest OpenClaw tenant runtime plugin", () => {
     expect(harness.requests).toHaveLength(1);
   });
 
+  it("resolves a stable subagent binding through its trusted sessionId", async () => {
+    const harness = new FetchHarness();
+    const runtime = new TenantRuntimePluginRuntime({ config: config(), fetch: harness.fetch });
+    const sessionId = "stable-subagent-session-id";
+    expect(
+      runtime.beforeAgentRun(formatControllerEnvelope(EXECUTION_CONTEXT_ID, "task"), {
+        agentId: LEGAL_AGENT_ID,
+        sessionId,
+      }),
+    ).toEqual({ outcome: "pass" });
+
+    const tool = runtime.createTool("legal_case_read", {
+      agentId: LEGAL_AGENT_ID,
+      sessionKey: LEGAL_SESSION_KEY,
+      sessionId,
+    });
+    if (tool === null) {
+      throw new Error("stable subagent tool was not created");
+    }
+    await tool.execute("session-id-call", { resource_id: "case_001" });
+    expect(harness.requests).toHaveLength(1);
+
+    const mismatched = runtime.createTool("legal_case_read", {
+      agentId: LEGAL_AGENT_ID,
+      sessionKey: LEGAL_SESSION_KEY,
+      sessionId: "other-session-id",
+    });
+    if (mismatched === null) {
+      throw new Error("mismatched stable subagent tool was not created");
+    }
+    await expect(
+      mismatched.execute("mismatched-session-id-call", { resource_id: "case_001" }),
+    ).rejects.toMatchObject({ code: "EXECUTION_CONTEXT_BINDING_MISSING" });
+    expect(harness.requests).toHaveLength(1);
+  });
+
   it("fails closed when the trusted session binding, config, or Gateway allow is missing", async () => {
     const harness = new FetchHarness();
     const runtime = new TenantRuntimePluginRuntime({ config: config(), fetch: harness.fetch });
