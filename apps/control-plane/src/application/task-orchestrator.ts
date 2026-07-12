@@ -234,9 +234,13 @@ export interface TaskRestoreContextLoader {
 
 function terminalTaskStatus(run: OpenClawAgentRunResult): L2TaskStatus {
   const status = run.status?.trim().toLowerCase();
-  return status === "completed" || status === "succeeded"
-    ? L2TaskStatus.COMPLETED
-    : L2TaskStatus.RUNNING;
+  if (status === "completed" || status === "succeeded") {
+    return L2TaskStatus.COMPLETED;
+  }
+  if (status === "accepted" || status === "pending" || status === "running") {
+    return L2TaskStatus.RUNNING;
+  }
+  return L2TaskStatus.FAILED;
 }
 
 function findChildSessionKey(value: unknown, l2AgentId: string): string | null {

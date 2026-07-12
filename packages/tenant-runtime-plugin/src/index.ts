@@ -21,6 +21,8 @@ const openClawInternalContextBegin = "<<<BEGIN_OPENCLAW_INTERNAL_CONTEXT>>>";
 const openClawInternalContextEnd = "<<<END_OPENCLAW_INTERNAL_CONTEXT>>>";
 const openClawControllerMessageHeader =
   /^\[Inter-session message\] sourceSession=agent:main:(?:task_[a-f0-9]{24}|p3-[a-f0-9]{16}) sourceChannel=webchat sourceTool=sessions_send isUser=false$/u;
+const openClawControllerClockPrefix =
+  /^\[(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]) (?:[01]\d|2[0-3]):[0-5]\d GMT[+-](?:[0-9]|1[0-4])\] /u;
 const openClawSubagentAnnouncementHeader =
   /^\[Inter-session message\] sourceSession=agent:l2_[a-f0-9]{20}:subagent:[A-Za-z0-9_:@.-]+ sourceChannel=webchat sourceTool=subagent_announce isUser=false$/u;
 
@@ -405,8 +407,14 @@ export function formatControllerEnvelope(executionContextId: string, prompt: str
 
 function parseControllerEnvelope(prompt: string): string | null {
   const lines = prompt.split(/\r?\n/u);
+  const normalizeEnvelopeLine = (line: string, index: number): string =>
+    index === 2 &&
+    openClawControllerMessageHeader.test(lines[0] ?? "") &&
+    lines[1] === openClawInterSessionExplanation
+      ? line.replace(openClawControllerClockPrefix, "")
+      : line;
   const envelopeIndexes = lines.flatMap((line, index) =>
-    line.startsWith(controllerEnvelopePrefix) ? [index] : [],
+    normalizeEnvelopeLine(line, index).startsWith(controllerEnvelopePrefix) ? [index] : [],
   );
   if (envelopeIndexes.length !== 1) {
     return null;
@@ -426,7 +434,11 @@ function parseControllerEnvelope(prompt: string): string | null {
   if (!directEnvelope && !stableSubagentEnvelope && !stableInterSessionEnvelope) {
     return null;
   }
-  const envelopeLine = lines[envelopeIndex];
+  const rawEnvelopeLine = lines[envelopeIndex];
+  const envelopeLine =
+    rawEnvelopeLine === undefined
+      ? undefined
+      : normalizeEnvelopeLine(rawEnvelopeLine, envelopeIndex);
   if (envelopeLine === undefined) {
     return null;
   }

@@ -344,6 +344,60 @@ describe("Phase 6 runnable service layer", () => {
     ]);
   });
 
+  it("fails a final L0 run that did not create the required native L2 child", async () => {
+    const events: string[] = [];
+    const catalog = new DemoTenantCapabilityCatalog();
+    const runtimes = new FakeRuntimeRepository();
+    const persistence = new FakeTaskPersistence(events);
+    const contextRepository = new FakeExecutionContexts(events);
+    const orchestrator = new TaskOrchestrator(
+      catalog,
+      new EnsureTenantBizAgent(catalog, runtimes, {
+        runtimeRoot: "/tmp/agentnest-runtime",
+        now: () => NOW,
+        createRuntimeId: () => RUNTIME_ID,
+      }),
+      runtimes,
+      new CreateTaskExecutionContext(catalog, contextRepository, { now: () => NOW }),
+      persistence,
+      {
+        ensureProfile: (spec) => Promise.resolve(observedProfile(spec)),
+        dispatchToAgent: (input) =>
+          Promise.resolve({
+            runId: "run-without-native-child",
+            status: "ok",
+            sessionKey: input.sessionKey,
+            raw: { final_output: "L0 returned without sessions_spawn evidence" },
+          }),
+        exportSessionHistory: () => {
+          throw new Error("child history must not be queried without a child Session key");
+        },
+      },
+      new OpenClawTaskProfileFactory({ runtimeRoot: "/tmp/openclaw-runtime" }),
+      { now: () => NOW },
+      { dispatchMode: "l0" },
+    );
+
+    const result = await orchestrator.execute({
+      requestId: "req_no_child",
+      idempotencyKey: "idem_no_child",
+      traceId: "trace_no_child",
+      scope: SCOPE,
+      taskType: "LEGAL_EVIDENCE_CHECK",
+      resourceType: "CASE",
+      resourceId: "case_001",
+      input: { question: "require native child" },
+    });
+
+    expect(result.task.status).toBe(L2TaskStatus.FAILED);
+    expect(result.task.currentStep).toBe("FAILED");
+    expect(result.task.result).toMatchObject({ openclaw_child_session_key: null });
+    expect(runtimes.ready.map((entry) => entry.status)).toEqual([
+      L1RuntimeStatus.ACTIVE,
+      L1RuntimeStatus.IDLE,
+    ]);
+  });
+
   it("formats the controller envelope canonically and builds isolated L1/L2 Profiles", async () => {
     const catalog = new DemoTenantCapabilityCatalog();
     const profile = await catalog.resolveProfile(SCOPE);

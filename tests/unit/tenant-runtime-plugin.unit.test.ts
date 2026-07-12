@@ -242,9 +242,35 @@ describe("AgentNest OpenClaw tenant runtime plugin", () => {
     await tool.execute("stable-inter-session-call", { resource_id: "case_001" });
     expect(harness.requests).toHaveLength(1);
 
+    const timestampedControllerPrompt = controllerPrompt.replace(
+      canonicalEnvelopeLine,
+      `[Sun 2026-07-12 19:08 GMT+8] ${canonicalEnvelopeLine}`,
+    );
+    expect(
+      runtime.beforeAgentRun(timestampedControllerPrompt, {
+        agentId: LEGAL_AGENT_ID,
+        sessionId: "stable-inter-session-controller",
+      }),
+    ).toEqual({ outcome: "pass" });
+    await tool.execute("stable-timestamped-inter-session-call", { resource_id: "case_001" });
+    expect(harness.requests).toHaveLength(2);
+
     expect(
       runtime.beforeAgentRun(
         controllerPrompt.replace("sourceTool=sessions_send", "sourceTool=exec"),
+        {
+          agentId: LEGAL_AGENT_ID,
+          sessionId: "stable-inter-session-controller",
+        },
+      ),
+    ).toMatchObject({ outcome: "block", category: "agentnest_context_missing" });
+
+    expect(
+      runtime.beforeAgentRun(
+        controllerPrompt.replace(
+          canonicalEnvelopeLine,
+          `[Sunday 2026-07-12 19:08 GMT+8] ${canonicalEnvelopeLine}`,
+        ),
         {
           agentId: LEGAL_AGENT_ID,
           sessionId: "stable-inter-session-controller",
