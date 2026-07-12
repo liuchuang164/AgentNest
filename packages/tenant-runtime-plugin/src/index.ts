@@ -223,6 +223,32 @@ interface ExecutionContextBindingIdentity {
   readonly sessionId: string | undefined;
 }
 
+type ExecutionContextBindingMap = Map<string, ExecutionContextBinding>;
+
+const processBindingMapSymbol = Symbol.for(
+  "agentnest.tenant-runtime.execution-context-bindings.v1",
+);
+
+function isExecutionContextBindingMap(value: unknown): value is ExecutionContextBindingMap {
+  return value instanceof Map;
+}
+
+function processBindingMap(): ExecutionContextBindingMap {
+  const host = globalThis as unknown as Record<symbol, unknown>;
+  const existing = host[processBindingMapSymbol];
+  if (isExecutionContextBindingMap(existing)) {
+    return existing;
+  }
+  const bindings: ExecutionContextBindingMap = new Map();
+  Object.defineProperty(host, processBindingMapSymbol, {
+    value: bindings,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+  return bindings;
+}
+
 function bindingKey(identity: ExecutionContextBindingIdentity): string | null {
   if (identity.sessionId !== undefined) {
     return identity.sessionId.length === 0 ? null : `id:${identity.sessionId}`;
@@ -234,7 +260,12 @@ function bindingKey(identity: ExecutionContextBindingIdentity): string | null {
 }
 
 export class ExecutionContextBindingCache {
-  readonly #bindings = new Map<string, ExecutionContextBinding>();
+  readonly #bindings: ExecutionContextBindingMap;
+
+  public constructor(scope: "isolated" | "process" = "isolated") {
+    this.#bindings =
+      scope === "process" ? processBindingMap() : new Map<string, ExecutionContextBinding>();
+  }
 
   public bind(
     identity: ExecutionContextBindingIdentity,
@@ -581,7 +612,10 @@ const tenantRuntimePlugin: OpenClawPluginDefinition = definePluginEntry({
   description: "Scoped AgentNest Demo tools backed by server-side execution contexts.",
   configSchema: runtimeConfigSchema,
   register(api) {
-    const runtime = new TenantRuntimePluginRuntime({ config: parsePluginConfig(api.pluginConfig) });
+    const runtime = new TenantRuntimePluginRuntime({
+      config: parsePluginConfig(api.pluginConfig),
+      bindings: new ExecutionContextBindingCache("process"),
+    });
     api.on("before_agent_run", (event, context) => runtime.beforeAgentRun(event.prompt, context));
     for (const name of businessToolNames) {
       api.registerTool((context) => runtime.createTool(name, context), {

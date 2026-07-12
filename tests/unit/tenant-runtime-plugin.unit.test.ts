@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  ExecutionContextBindingCache,
   TenantRuntimePluginRuntime,
   businessToolDefinitions,
   businessToolNames,
@@ -217,6 +218,7 @@ describe("AgentNest OpenClaw tenant runtime plugin", () => {
     expect(
       runtime.beforeAgentRun(formatControllerEnvelope(EXECUTION_CONTEXT_ID, "task"), {
         agentId: LEGAL_AGENT_ID,
+        sessionKey: "agent:l2_legal:subagent:hook-key",
         sessionId,
       }),
     ).toEqual({ outcome: "pass" });
@@ -244,6 +246,45 @@ describe("AgentNest OpenClaw tenant runtime plugin", () => {
       mismatched.execute("mismatched-session-id-call", { resource_id: "case_001" }),
     ).rejects.toMatchObject({ code: "EXECUTION_CONTEXT_BINDING_MISSING" });
     expect(harness.requests).toHaveLength(1);
+  });
+
+  it("shares trusted bindings across stable workspace plugin registries", async () => {
+    const harness = new FetchHarness();
+    const hookRuntime = new TenantRuntimePluginRuntime({
+      config: config(),
+      bindings: new ExecutionContextBindingCache("process"),
+    });
+    const toolRuntime = new TenantRuntimePluginRuntime({
+      config: config(),
+      bindings: new ExecutionContextBindingCache("process"),
+      fetch: harness.fetch,
+    });
+    const sessionId = "stable-process-shared-session-id";
+    expect(
+      hookRuntime.beforeAgentRun(formatControllerEnvelope(EXECUTION_CONTEXT_ID, "task"), {
+        agentId: LEGAL_AGENT_ID,
+        sessionKey: "agent:l2_legal:subagent:hook-registry",
+        sessionId,
+      }),
+    ).toEqual({ outcome: "pass" });
+
+    const tool = toolRuntime.createTool("legal_case_read", {
+      agentId: LEGAL_AGENT_ID,
+      sessionKey: "agent:l2_legal:subagent:tool-registry",
+      sessionId,
+    });
+    if (tool === null) {
+      throw new Error("stable workspace registry tool was not created");
+    }
+    await tool.execute("process-shared-call", { resource_id: "case_001" });
+    expect(harness.requests).toHaveLength(1);
+
+    expect(
+      hookRuntime.beforeAgentRun("invalid controller prompt", {
+        agentId: LEGAL_AGENT_ID,
+        sessionId,
+      }),
+    ).toMatchObject({ outcome: "block" });
   });
 
   it("fails closed when the trusted session binding, config, or Gateway allow is missing", async () => {
