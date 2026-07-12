@@ -12,6 +12,9 @@ import { Value } from "typebox/value";
 
 export const pluginId = "agentnest-tenant-runtime";
 export const controllerEnvelopePrefix = "AGENTNEST_CONTROLLER_CONTEXT_V1 ";
+const openClawSubagentContextLine =
+  "[Subagent Context] You are running as a subagent (depth 1/1). Results auto-announce to your requester; do not busy-poll for status.";
+const openClawSubagentTaskLine = "[Subagent Task]";
 
 const UUID_PATTERN = "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$";
 const AGENT_ID_PATTERN = "^[a-z][a-z0-9_-]{0,63}$";
@@ -335,12 +338,29 @@ export function formatControllerEnvelope(executionContextId: string, prompt: str
 }
 
 function parseControllerEnvelope(prompt: string): string | null {
-  const firstLineEnd = prompt.search(/\r?\n/u);
-  const firstLine = firstLineEnd === -1 ? prompt : prompt.slice(0, firstLineEnd);
-  if (!firstLine.startsWith(controllerEnvelopePrefix)) {
+  const lines = prompt.split(/\r?\n/u);
+  const envelopeIndexes = lines.flatMap((line, index) =>
+    line.startsWith(controllerEnvelopePrefix) ? [index] : [],
+  );
+  if (envelopeIndexes.length !== 1) {
     return null;
   }
-  const rawEnvelope = firstLine.slice(controllerEnvelopePrefix.length);
+  const envelopeIndex = envelopeIndexes[0];
+  const directEnvelope = envelopeIndex === 0;
+  const stableSubagentEnvelope =
+    envelopeIndex === 4 &&
+    lines[0] === openClawSubagentContextLine &&
+    lines[1] === "" &&
+    lines[2] === openClawSubagentTaskLine &&
+    lines[3] === "";
+  if (!directEnvelope && !stableSubagentEnvelope) {
+    return null;
+  }
+  const envelopeLine = lines[envelopeIndex];
+  if (envelopeLine === undefined) {
+    return null;
+  }
+  const rawEnvelope = envelopeLine.slice(controllerEnvelopePrefix.length);
   let envelope: unknown;
   try {
     envelope = JSON.parse(rawEnvelope);
@@ -349,7 +369,7 @@ function parseControllerEnvelope(prompt: string): string | null {
   }
   if (
     !Value.Check(ControllerEnvelopeSchema, envelope) ||
-    firstLine !== `${controllerEnvelopePrefix}${JSON.stringify(envelope)}`
+    envelopeLine !== `${controllerEnvelopePrefix}${JSON.stringify(envelope)}`
   ) {
     return null;
   }

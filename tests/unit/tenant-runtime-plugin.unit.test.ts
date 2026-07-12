@@ -169,6 +169,47 @@ describe("AgentNest OpenClaw tenant runtime plugin", () => {
     expect(harness.requests).toHaveLength(0);
   });
 
+  it("accepts only the exact stable subagent preamble before one canonical envelope", async () => {
+    const harness = new FetchHarness();
+    const runtime = new TenantRuntimePluginRuntime({ config: config(), fetch: harness.fetch });
+    const canonicalEnvelopeLine =
+      formatControllerEnvelope(EXECUTION_CONTEXT_ID, "task").split("\n")[0] ?? "";
+    const stableSubagentPrompt = [
+      "[Subagent Context] You are running as a subagent (depth 1/1). Results auto-announce to your requester; do not busy-poll for status.",
+      "",
+      "[Subagent Task]",
+      "",
+      canonicalEnvelopeLine,
+      "perform the scoped Demo task",
+    ].join("\n");
+
+    expect(
+      runtime.beforeAgentRun(stableSubagentPrompt, {
+        agentId: LEGAL_AGENT_ID,
+        sessionKey: LEGAL_SESSION_KEY,
+      }),
+    ).toEqual({ outcome: "pass" });
+    const tool = requireTool(runtime, "legal_case_read", LEGAL_AGENT_ID, LEGAL_SESSION_KEY);
+    await tool.execute("stable-subagent-call", { resource_id: "case_001" });
+    expect(harness.requests).toHaveLength(1);
+
+    for (const invalidPrompt of [
+      `untrusted prefix\n${canonicalEnvelopeLine}`,
+      `${stableSubagentPrompt}\n${canonicalEnvelopeLine}`,
+    ]) {
+      expect(
+        runtime.beforeAgentRun(invalidPrompt, {
+          agentId: LEGAL_AGENT_ID,
+          sessionKey: LEGAL_SESSION_KEY,
+        }),
+      ).toMatchObject({ outcome: "block", category: "agentnest_context_missing" });
+      await expect(
+        tool.execute("invalid-subagent-call", { resource_id: "case_001" }),
+      ).rejects.toMatchObject({ code: "EXECUTION_CONTEXT_BINDING_MISSING" });
+    }
+    expect(harness.requests).toHaveLength(1);
+  });
+
   it("fails closed when the trusted session binding, config, or Gateway allow is missing", async () => {
     const harness = new FetchHarness();
     const runtime = new TenantRuntimePluginRuntime({ config: config(), fetch: harness.fetch });
