@@ -210,7 +210,7 @@ stage=postgres_start
 compose up -d postgres >> "$compose_log" 2>&1
 stage=postgres_readiness
 attempt=0
-until compose exec -T postgres pg_isready -U agentnest -d agentnest >/dev/null 2>&1; do
+until compose exec -T postgres pg_isready -U agentnest -d agentnest </dev/null >/dev/null 2>&1; do
   attempt=$((attempt + 1))
   if [ "$attempt" -ge 45 ]; then exit 30; fi
   sleep 2

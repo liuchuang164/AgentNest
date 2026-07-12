@@ -59,7 +59,7 @@ health() { curl -fsS -H 'X-Request-Id: status-probe' "http://127.0.0.1:$1/health
 printf 'CONTROL_HEALTH=%s\n' "$(health "$CONTROL_PLANE_PORT")"
 printf 'DATA_HEALTH=%s\n' "$(health "$DATA_GATEWAY_MOCK_PORT")"
 printf 'EXTERNAL_HEALTH=%s\n' "$(health "$EXTERNAL_GATEWAY_MOCK_PORT")"
-printf 'POSTGRES_HEALTH=%s\n' "$(compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1 && printf pass || printf fail)"
+printf 'POSTGRES_HEALTH=%s\n' "$(compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" </dev/null >/dev/null 2>&1 && printf pass || printf fail)"
 export OPENCLAW_STATE_DIR="$workdir/openclaw-state"
 export OPENCLAW_CONFIG_PATH="$workdir/openclaw-state/openclaw.json"
 if [ -f "$workdir/openclaw-state/.env" ]; then set -a; . "$workdir/openclaw-state/.env"; set +a; fi

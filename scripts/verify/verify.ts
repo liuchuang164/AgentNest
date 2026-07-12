@@ -65,7 +65,7 @@ memory_isolation_pass=true
 deny_no_side_effect_pass=true
 
 if [ "$isolation_selected" = true ]; then
-  if ! compose run --rm --no-deps control-plane pnpm test:isolation > "$reports/isolation-suite.log" 2>&1; then
+  if ! compose run -T --rm --no-deps control-plane pnpm test:isolation </dev/null > "$reports/isolation-suite.log" 2>&1; then
     isolation_pass=false
   fi
 fi
@@ -73,6 +73,7 @@ fi
 if [ "$suite" = all ]; then
   if ! compose exec -T control-plane sh -c \
     'AGENTNEST_TEST_DATABASE_URL="$DATABASE_URL" pnpm exec vitest run --config vitest.integration.config.ts tests/integration/postgres-phase6-real.integration.test.ts' \
+    </dev/null \
     > "$reports/postgres-adapter-suite.log" 2>&1; then
     postgres_adapter_pass=false
   fi
@@ -120,8 +121,8 @@ run_control_task() {
   if [ "$status" != COMPLETED ]; then return 1; fi
   attempt=0
   while [ "$attempt" -lt 30 ]; do
-    operation_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v task_id="$task_id" -v expected_tool="$expected_tool" -c "SELECT count(*) FROM demo_gateway_operation WHERE task_id = :'task_id' AND tool_name = :'expected_tool' AND action = 'write'" 2>/dev/null || printf 0)
-    trace_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v task_id="$task_id" -v expected_tool="$expected_tool" -c "SELECT count(*) FROM gateway_trace_event WHERE task_id = :'task_id' AND tool_name = :'expected_tool' AND action = 'write' AND decision = 'ALLOW'" 2>/dev/null || printf 0)
+    operation_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v task_id="$task_id" -v expected_tool="$expected_tool" -c "SELECT count(*) FROM demo_gateway_operation WHERE task_id = :'task_id' AND tool_name = :'expected_tool' AND action = 'write'" </dev/null 2>/dev/null || printf 0)
+    trace_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v task_id="$task_id" -v expected_tool="$expected_tool" -c "SELECT count(*) FROM gateway_trace_event WHERE task_id = :'task_id' AND tool_name = :'expected_tool' AND action = 'write' AND decision = 'ALLOW'" </dev/null 2>/dev/null || printf 0)
     if [ "$operation_count" -ge 1 ] 2>/dev/null && [ "$trace_count" -ge 1 ] 2>/dev/null; then return 0; fi
     attempt=$((attempt + 1))
     sleep 2
@@ -151,7 +152,7 @@ if [ "$control_chain_selected" = true ]; then
 fi
 
 postgres_value() {
-  compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@" 2>/dev/null | tr -d '\r'
+  compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@" </dev/null 2>/dev/null | tr -d '\r'
 }
 
 write_memory_canary() {
@@ -164,6 +165,7 @@ write_memory_canary() {
   row=$(compose exec -T postgres psql -At -F '|' -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
     -v tenant="$tenant" -v biz="$biz" \
     -c "SELECT logical_agent_id, runtime_instance_id, session_id, task_id FROM agent_task WHERE tenant_id = :'tenant' AND biz_domain = :'biz' ORDER BY created_at DESC LIMIT 1" \
+    </dev/null \
     2>/dev/null | tr -d '\r')
   if [ -z "$row" ]; then return 1; fi
   old_ifs=$IFS
@@ -180,6 +182,7 @@ write_memory_canary() {
     -v runtime_instance_id="$runtime_instance_id" -v session_id="$session_id" \
     -v task_id="$task_id" -v canary="$own" \
     -c "DELETE FROM agent_memory WHERE tenant_id = :'tenant' AND biz_domain = :'biz' AND dedupe_key = 'phase6-memory-canary'; INSERT INTO agent_memory (tenant_id, biz_domain, memory_id, logical_agent_id, runtime_instance_id, session_id, task_id, dedupe_key, memory_type, resource_type, resource_id, content, created_at, updated_at) VALUES (:'tenant', :'biz', ('00000000-0000-4000-8000-' || substr(md5(:'tenant' || ':' || :'biz' || ':phase6-memory-canary'), 1, 12))::uuid, :'logical_agent_id', :'runtime_instance_id', :'session_id', :'task_id', 'phase6-memory-canary', 'DEMO_CANARY', NULL, NULL, :'canary', now(), now())" \
+    </dev/null \
     >/dev/null 2>&1; then return 1; fi
   response_file="$reports/memory-$label-response.json"
   if ! curl -fsS -H 'X-Request-Id: phase6-memory-canary' \
@@ -242,7 +245,7 @@ post_json() {
 
 if [ "$lifecycle_selected" = true ]; then
   lifecycle_memory_pass=true
-  if ! compose run --rm --no-deps control-plane pnpm test:lifecycle > "$reports/lifecycle-suite.log" 2>&1; then
+  if ! compose run -T --rm --no-deps control-plane pnpm test:lifecycle </dev/null > "$reports/lifecycle-suite.log" 2>&1; then
     lifecycle_suite_pass=false
   fi
   eligible_l2=$(postgres_value -c "SELECT count(*) FROM agent_task WHERE unloaded_at IS NULL AND status IN ('COMPLETED', 'FAILED', 'CHECKPOINTED')")
@@ -259,6 +262,7 @@ if [ "$lifecycle_selected" = true ]; then
   before_row=$(compose exec -T postgres psql -At -F '|' -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
     -v tenant=tenant_A -v biz=LEGAL \
     -c "SELECT agent.logical_agent_id, agent.current_runtime_instance_id, (SELECT task.task_id FROM agent_task AS task WHERE task.tenant_id = agent.tenant_id AND task.biz_domain = agent.biz_domain AND task.logical_agent_id = agent.logical_agent_id ORDER BY task.created_at DESC LIMIT 1) FROM tenant_biz_agent AS agent WHERE agent.tenant_id = :'tenant' AND agent.biz_domain = :'biz'" \
+    </dev/null \
     2>/dev/null | tr -d '\r')
   old_ifs=$IFS
   IFS='|'
@@ -298,6 +302,7 @@ if [ "$lifecycle_selected" = true ]; then
   after_row=$(compose exec -T postgres psql -At -F '|' -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
     -v tenant=tenant_A -v biz=LEGAL \
     -c "SELECT agent.logical_agent_id, agent.current_runtime_instance_id, runtime.restored_from_runtime_instance_id FROM tenant_biz_agent AS agent JOIN agent_runtime_instance AS runtime ON runtime.logical_agent_id = agent.logical_agent_id AND runtime.runtime_instance_id = agent.current_runtime_instance_id WHERE agent.tenant_id = :'tenant' AND agent.biz_domain = :'biz'" \
+    </dev/null \
     2>/dev/null | tr -d '\r')
   old_ifs=$IFS
   IFS='|'
@@ -362,13 +367,13 @@ if [ "$recovery_selected" = true ]; then
   : > "$recovery_log"
   control_restart_pass=true
   openclaw_restart_pass=true
-  before_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c 'SELECT count(*) FROM tenant_biz_agent' 2>> "$recovery_log" || printf unavailable)
+  before_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c 'SELECT count(*) FROM tenant_biz_agent' </dev/null 2>> "$recovery_log" || printf unavailable)
   if ! compose restart control-plane >> "$recovery_log" 2>&1; then recovery_pass=false; control_restart_pass=false; fi
   attempt=0
   until curl -fsS -H 'X-Request-Id: recovery-health' "http://127.0.0.1:$CONTROL_PLANE_PORT/health" >> "$recovery_log" 2>&1; do
     attempt=$((attempt + 1)); if [ "$attempt" -ge 45 ]; then recovery_pass=false; control_restart_pass=false; break; fi; sleep 2
   done
-  after_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c 'SELECT count(*) FROM tenant_biz_agent' 2>> "$recovery_log" || printf unavailable)
+  after_count=$(compose exec -T postgres psql -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c 'SELECT count(*) FROM tenant_biz_agent' </dev/null 2>> "$recovery_log" || printf unavailable)
   if [ "$before_count" = unavailable ] || [ "$before_count" != "$after_count" ]; then recovery_pass=false; fi
   if ! curl -fsS -H 'X-Request-Id: recovery-agents' "http://127.0.0.1:$CONTROL_PLANE_PORT/api/agents?request_id=recovery-agents&tenant_id=tenant_A&biz_domain=LEGAL" >> "$recovery_log" 2>&1; then recovery_pass=false; fi
 
