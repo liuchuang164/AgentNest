@@ -5,6 +5,7 @@ import {
 } from "@agentnest/capability";
 import { L1RuntimeStatus, L2TaskStatus, type TenantBizScope } from "@agentnest/contracts";
 import type {
+  CreateSessionInput,
   DispatchToAgentInput,
   ObservedOpenClawProfile,
   OpenClawAgentProfileSpec,
@@ -268,6 +269,7 @@ describe("Phase 6 runnable service layer", () => {
     const persistence = new FakeTaskPersistence(events);
     const contextRepository = new FakeExecutionContexts(events);
     const dispatches: DispatchToAgentInput[] = [];
+    const createdSessions: CreateSessionInput[] = [];
     const ensuredProfiles: OpenClawAgentProfileSpec[] = [];
     const orchestrator = new TaskOrchestrator(
       catalog,
@@ -295,6 +297,14 @@ describe("Phase 6 runnable service layer", () => {
             raw: {
               final_output: `AGENTNEST_L0_DISPATCHED|task_id=task_demo|l1_session_key=agent:${LOGICAL_AGENT_ID}:runtime-${RUNTIME_ID}|child_session_key=agent:${l2?.agentId ?? "missing"}:subagent:child-001`,
             },
+          });
+        },
+        createSession(input) {
+          createdSessions.push(input);
+          return Promise.resolve({
+            key: input.sessionKey,
+            sessionId: "stable-l1-session-id",
+            raw: {},
           });
         },
         exportSessionHistory(input) {
@@ -338,6 +348,13 @@ describe("Phase 6 runnable service layer", () => {
       `AGENTNEST_CONTROLLER_CONTEXT_V1 {"execution_context_id":"${EXECUTION_CONTEXT_ID}"}`,
     );
     expect(message).toContain(`"l1_session_key":"agent:${LOGICAL_AGENT_ID}:runtime-${RUNTIME_ID}"`);
+    expect(createdSessions).toEqual([
+      {
+        agentId: LOGICAL_AGENT_ID,
+        sessionKey: `agent:${LOGICAL_AGENT_ID}:runtime-${RUNTIME_ID}`,
+        label: `AgentNest tenant_A/LEGAL L1 ${RUNTIME_ID}`,
+      },
+    ]);
     expect(runtimes.ready.map((entry) => entry.status)).toEqual([
       L1RuntimeStatus.ACTIVE,
       L1RuntimeStatus.IDLE,

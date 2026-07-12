@@ -386,7 +386,7 @@ export class TaskOrchestrator {
       await this.openclaw.createSession?.({
         agentId: pair.l1.agentId,
         sessionKey: l1SessionKey,
-        label: `AgentNest ${scope.tenantId}/${scope.bizDomain} L1`,
+        label: `AgentNest ${scope.tenantId}/${scope.bizDomain} L1 ${activeAgent.runtime.runtimeInstanceId}`,
       });
       const now = this.validNow();
       await this.runtimes.markRuntimeReady({
