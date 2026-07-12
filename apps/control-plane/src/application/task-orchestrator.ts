@@ -40,6 +40,7 @@ const ALL_BUSINESS_TOOLS = Object.freeze([
 ]);
 
 const L1_RUNTIME_TOOLS = Object.freeze([
+  "read",
   "session_status",
   "sessions_spawn",
   "sessions_yield",
@@ -186,7 +187,7 @@ export class OpenClawTaskProfileFactory implements TaskOpenClawProfileFactory {
       ...L1_RUNTIME_TOOLS,
       ...Object.keys(input.activeAgent.capabilityProfile.tools),
     ]);
-    const l2Tools = sortedUnique(Object.keys(input.effectiveCapability.tools));
+    const l2Tools = sortedUnique(["read", ...Object.keys(input.effectiveCapability.tools)]);
     const l1Denied = ALL_BUSINESS_TOOLS.filter((tool) => !l1Tools.includes(tool));
     const l2Denied = ALL_BUSINESS_TOOLS.filter((tool) => !l2Tools.includes(tool));
     const model = this.options.model;

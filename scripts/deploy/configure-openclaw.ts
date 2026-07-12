@@ -207,6 +207,7 @@ openclaw config set agents.defaults.model.primary "$model_name" >/dev/null
 openclaw config set agents.defaults.skills '[]' --strict-json >/dev/null
 openclaw config set agents.defaults.subagents '{"maxConcurrent":5,"maxSpawnDepth":1,"maxChildrenPerAgent":5,"archiveAfterMinutes":0,"runTimeoutSeconds":300,"requireAgentId":true}' --strict-json >/dev/null
 openclaw config set agents.list "$profiles" --strict-json --replace >/dev/null
+openclaw config set tools.fs.workspaceOnly true --strict-json >/dev/null
 openclaw config set tools.sessions.visibility all >/dev/null
 openclaw config set tools.agentToAgent.enabled true --strict-json >/dev/null
 openclaw config set tools.agentToAgent.allow "$agent_to_agent_ids" --strict-json >/dev/null
@@ -516,6 +517,7 @@ async function buildPayload(config: PreflightConfig): Promise<ConfigurationPaylo
       subagents: { allowAgents: [l2AgentId], requireAgentId: true },
       tools: {
         allow: [
+          "read",
           "sessions_spawn",
           "sessions_yield",
           "subagents",
@@ -532,7 +534,7 @@ async function buildPayload(config: PreflightConfig): Promise<ConfigurationPaylo
       model: config.modelName,
       skills: [...taskTemplate.skills],
       tools: {
-        allow: Object.keys(taskTemplate.tools).sort(),
+        allow: ["read", ...Object.keys(taskTemplate.tools)].sort(),
         deny: deniedBusinessTools,
       },
     });

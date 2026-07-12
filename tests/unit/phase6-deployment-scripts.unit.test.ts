@@ -62,6 +62,17 @@ describe("Phase 6 remote shell transport", () => {
     );
   });
 
+  it("allows workspace-scoped Skill reads only for L1 and L2 profiles", async () => {
+    const configuration = await readFile(
+      resolve(workspaceRoot, "scripts/deploy/configure-openclaw.ts"),
+      "utf8",
+    );
+    expect(configuration).toContain(
+      "openclaw config set tools.fs.workspaceOnly true --strict-json",
+    );
+    expect(configuration).toContain('allow: ["read", ...Object.keys(taskTemplate.tools)].sort()');
+  });
+
   it("runs fresh Phase 3 evidence before lifecycle mutates the deployed profiles", async () => {
     const verification = await readFile(resolve(workspaceRoot, "scripts/verify/verify.ts"), "utf8");
     const removeStaleReport = verification.indexOf("await rm(phase3ReportPath, { force: true })");

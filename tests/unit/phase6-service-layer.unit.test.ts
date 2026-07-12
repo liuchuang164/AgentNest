@@ -381,6 +381,8 @@ describe("Phase 6 runnable service layer", () => {
     });
     expect(pair.l1.agentDir).not.toBe(pair.l2.agentDir);
     expect(pair.l1.tools.allow).toContain("sessions_spawn");
+    expect(pair.l1.tools.allow).toContain("read");
+    expect(pair.l2.tools.allow).toContain("read");
     expect(pair.l2.tools.allow).not.toContain("robot_device_read");
     expect(pair.l2.tools.allow).not.toContain("sessions_spawn");
     expect(formatTaskControllerEnvelope(EXECUTION_CONTEXT_ID, "prompt")).toBe(

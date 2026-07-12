@@ -222,9 +222,9 @@ const l1Deny = profileTools(l1Profile, "deny");
 const l2Allow = profileTools(l2Profile, "allow");
 const l2Deny = profileTools(l2Profile, "deny");
 const staticToolsOk =
-  mainAllow.includes("sessions_send") && expected.allBusinessTools.every((name) => !mainAllow.includes(name) && mainDeny.includes(name)) &&
-  l1Allow.includes("sessions_spawn") && expected.legalTools.every((name) => l1Allow.includes(name)) && expected.robotTools.every((name) => !l1Allow.includes(name) && l1Deny.includes(name)) &&
-  expected.legalTools.every((name) => l2Allow.includes(name)) && expected.robotTools.every((name) => !l2Allow.includes(name) && l2Deny.includes(name)) &&
+  mainAllow.includes("sessions_send") && !mainAllow.includes("read") && expected.allBusinessTools.every((name) => !mainAllow.includes(name) && mainDeny.includes(name)) &&
+  l1Allow.includes("read") && l1Allow.includes("sessions_spawn") && expected.legalTools.every((name) => l1Allow.includes(name)) && expected.robotTools.every((name) => !l1Allow.includes(name) && l1Deny.includes(name)) &&
+  l2Allow.includes("read") && expected.legalTools.every((name) => l2Allow.includes(name)) && expected.robotTools.every((name) => !l2Allow.includes(name) && l2Deny.includes(name)) &&
   !l2Allow.includes("sessions_spawn") && sameSet(profileSubagents(l1Profile), [expected.l2AgentId]);
 const staticSkillsOk = sameSet(profileSkills(mainProfile), []) && sameSet(profileSkills(l1Profile), [expected.legalSkill]) && sameSet(profileSkills(l2Profile), [expected.legalSkill]);
 
@@ -236,7 +236,7 @@ const l1Skills = knownNames(readJson("skills-l1.json"), businessSkills);
 const l2Skills = knownNames(readJson("skills-l2.json"), businessSkills);
 const observedSkillsOk = sameSet(mainSkills, []) && sameSet(l1Skills, [expected.legalSkill]) && sameSet(l2Skills, [expected.legalSkill]);
 
-const knownTools = [...expected.allBusinessTools, "sessions_send", "sessions_spawn", "session_status"];
+const knownTools = [...expected.allBusinessTools, "read", "sessions_send", "sessions_spawn", "session_status"];
 const effective = (name) => {
   const exit = parseExit("effective-" + name + ".exit.txt");
   if (exit !== 0) return { available: false, tools: [] };
@@ -246,9 +246,9 @@ const mainEffective = effective("main");
 const l1Effective = effective("l1");
 const l2Effective = effective("l2");
 const effectiveIsolationOk = mainEffective.available && l1Effective.available && l2Effective.available &&
-  mainEffective.tools.includes("sessions_send") && !mainEffective.tools.some((name) => expected.allBusinessTools.includes(name)) &&
-  l1Effective.tools.includes("sessions_spawn") && !l1Effective.tools.some((name) => expected.robotTools.includes(name)) &&
-  !l2Effective.tools.includes("sessions_spawn") && !l2Effective.tools.some((name) => expected.robotTools.includes(name));
+  mainEffective.tools.includes("sessions_send") && !mainEffective.tools.includes("read") && !mainEffective.tools.some((name) => expected.allBusinessTools.includes(name)) &&
+  l1Effective.tools.includes("read") && l1Effective.tools.includes("sessions_spawn") && !l1Effective.tools.some((name) => expected.robotTools.includes(name)) &&
+  l2Effective.tools.includes("read") && !l2Effective.tools.includes("sessions_spawn") && !l2Effective.tools.some((name) => expected.robotTools.includes(name));
 
 const sessions = readJson("sessions.json");
 const mainRpc = readJson("main-rpc.json");
