@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-12T04:30:43.728Z",
+  "generated_at": "2026-07-12T07:38:49.297Z",
   "target": "redacted",
   "ssh": {
     "connected": true,
@@ -14,7 +14,7 @@
     "KERNEL": "5.15.0-119-generic",
     "CPU_COUNT": "4",
     "MEMORY_MIB": "15221",
-    "DISK_FREE_MIB": "90678",
+    "DISK_FREE_MIB": "78955",
     "WORKDIR_EXISTS": "yes",
     "WORKDIR_IS_DIRECTORY": "yes",
     "PROJECT_OWNERSHIP": "yes",
@@ -28,15 +28,15 @@
     "COMPOSE_VERSION": "Docker Compose version v5.3.1",
     "DOCKER_DAEMON": "reachable",
     "AGENTNEST_CONTAINER_CONFLICTS": "none",
-    "OWNED_COMPOSE_CONTAINER_COUNT": "0",
+    "OWNED_COMPOSE_CONTAINER_COUNT": "4",
     "GIT_VERSION": "git version 2.34.1",
     "CURL_VERSION": "curl 7.81.0 (x86_64-pc-linux-gnu) libcurl/7.81.0 OpenSSL/3.0.2 zlib/1.2.11 brotli/1.0.9 zstd/1.4.8 libidn2/2.3.2 libpsl/0.21.0 (+libidn2/2.3.2) libssh/0.9.6/openssl/zlib nghttp2/1.43.0 librtmp/2.3 OpenLDAP/2.5.16",
     "OPENCLAW_VERSION": "OpenClaw 2026.6.11 (e085fa1)",
     "PORT_18789": "owned",
-    "PORT_18080": "free",
-    "PORT_18081": "free",
-    "PORT_18082": "free",
-    "PORT_15432": "free"
+    "PORT_18080": "owned",
+    "PORT_18081": "owned",
+    "PORT_18082": "owned",
+    "PORT_15432": "owned"
   },
   "openclaw_stable": {
     "version": "2026.6.11",

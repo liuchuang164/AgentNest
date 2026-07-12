@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-12T07:31:36.826Z",
+  "target": "redacted",
+  "status": "PASS",
+  "observed": {
+    "PROJECT_MARKER": "present",
+    "DEPLOYMENT_FILES": "present",
+    "SERVICE_EXPECTED": "4",
+    "SERVICE_RUNNING": "4",
+    "SERVICE_RUNNING_NAMES": "control-plane,data-gateway-mock,external-gateway-mock,postgres",
+    "SERVICE_POSTGRES_STATE": "running",
+    "SERVICE_POSTGRES_HEALTH": "healthy",
+    "SERVICE_POSTGRES_EXIT": "0",
+    "SERVICE_CONTROL_PLANE_STATE": "running",
+    "SERVICE_CONTROL_PLANE_HEALTH": "healthy",
+    "SERVICE_CONTROL_PLANE_EXIT": "0",
+    "SERVICE_DATA_GATEWAY_MOCK_STATE": "running",
+    "SERVICE_DATA_GATEWAY_MOCK_HEALTH": "healthy",
+    "SERVICE_DATA_GATEWAY_MOCK_EXIT": "0",
+    "SERVICE_EXTERNAL_GATEWAY_MOCK_STATE": "running",
+    "SERVICE_EXTERNAL_GATEWAY_MOCK_HEALTH": "healthy",
+    "SERVICE_EXTERNAL_GATEWAY_MOCK_EXIT": "0",
+    "CONTROL_HEALTH": "pass",
+    "DATA_HEALTH": "pass",
+    "EXTERNAL_HEALTH": "pass",
+    "POSTGRES_HEALTH": "pass",
+    "OPENCLAW_VERSION": "OpenClaw 2026.6.11 (e085fa1) ",
+    "OPENCLAW_GATEWAY": "pass",
+    "AGENTNEST_PLUGIN": "pass"
+  }
+}

@@ -15,7 +15,7 @@ AgentNest 是一个基于 **OpenClaw 官方最新稳定版**的三层多租户 A
 
 ## 当前实现状态
 
-Phase 1–5 的契约、精简 Capability、PostgreSQL Runtime/Task/Memory/Trace/Checkpoint、Gateway Mock、1h/24h Reaper 和恢复链路均已落地。Phase 6 已把 commit `a8f750e` 重复部署到远端：PostgreSQL 16、Control Plane、Data/External Gateway Mock 为 4/4 healthy，OpenClaw stable `2026.6.11 (e085fa1)` 的 Gateway RPC 与 AgentNest plugin 均健康。最终本地 Gate 为 235 项测试通过、0 失败；远端真实 PostgreSQL adapter、三个 scope Memory canary、DENY Trace/无副作用、L1/L2 TTL unload、恢复 lineage、Tool write-once 以及 Control Plane/OpenClaw 重启恢复全部通过。三条真实模型链仍被百炼 `400 Arrearage` 账务状态阻断，因此最终结论为 `BLOCKED_EXTERNAL`，不得宣称 Demo 完成，`demo:verify`/`demo:report` 会按设计返回非零。证据见 [`artifacts/reports/phase-6-summary.md`](artifacts/reports/phase-6-summary.md)。
+Phase 1–5 的契约、精简 Capability、PostgreSQL Runtime/Task/Memory/Trace/Checkpoint、Gateway Mock、1h/24h Reaper 和恢复链路均已落地。Phase 6 已把 commit `74b94e1` 连续两次部署到远端：PostgreSQL 16、Control Plane、Data/External Gateway Mock 为 4/4 healthy，OpenClaw stable `2026.6.11 (e085fa1)` 的 Gateway RPC 与 AgentNest plugin 均健康。最终本地 Gate 为 236 项测试通过、0 失败；远端真实 PostgreSQL adapter、三个 scope Memory canary、DENY Trace/无副作用、L1/L2 TTL unload、恢复 lineage、Tool write-once 以及 Control Plane/OpenClaw 重启恢复全部通过。三条真实模型链仍被百炼 `400 Arrearage` 账务状态阻断，因此最终结论为 `BLOCKED_EXTERNAL`，不得宣称 Demo 完成，`demo:verify`/`demo:report` 会按设计返回非零。证据见 [`artifacts/reports/phase-6-summary.md`](artifacts/reports/phase-6-summary.md)。
 
 ## OpenClaw 基线
 
@@ -78,11 +78,11 @@ flowchart TB
 
 ## OpenClaw 映射
 
-| 逻辑层 | 推荐实现 | 隔离重点 |
-|---|---|---|
-| L0 Main Agent | 固定 `main` Profile | 只拥有租户路由和 Agent 管理能力 |
-| L1 TenantBizAgent | 独立 OpenClaw Agent Profile | 独立 workspace、agentDir、Session、Skill/Tool allowlist、Memory namespace |
-| L2 TaskAgent | 原生 `sessions_spawn` Sub-agent | 独立任务 Session，权限为 L1 子集 |
+| 逻辑层            | 推荐实现                        | 隔离重点                                                                  |
+| ----------------- | ------------------------------- | ------------------------------------------------------------------------- |
+| L0 Main Agent     | 固定 `main` Profile             | 只拥有租户路由和 Agent 管理能力                                           |
+| L1 TenantBizAgent | 独立 OpenClaw Agent Profile     | 独立 workspace、agentDir、Session、Skill/Tool allowlist、Memory namespace |
+| L2 TaskAgent      | 原生 `sessions_spawn` Sub-agent | 独立任务 Session，权限为 L1 子集                                          |
 
 L1 不能只靠 Prompt 模拟隔离。
 

@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "run_id": "phase6_d4bb6ccc-4e8f-4397-b68c-8bed5ebf43a9",
+  "generated_at": "2026-07-12T07:35:20.464Z",
+  "target": "redacted",
+  "status": "BLOCKED_EXTERNAL",
+  "suite": "all",
+  "platform_passed": true,
+  "provider_blocked": true,
+  "real_openclaw_tests": [
+    {
+      "name": "control_plane_tenant_a_legal_l0_l1_l2_mock_tool",
+      "status": "BLOCKED_EXTERNAL",
+      "evidence": "reports/control-legal-tenant-a-response.json"
+    },
+    {
+      "name": "control_plane_tenant_b_legal_l0_l1_l2_mock_tool",
+      "status": "BLOCKED_EXTERNAL",
+      "evidence": "reports/control-legal-tenant-b-response.json"
+    },
+    {
+      "name": "control_plane_robot_l0_l1_l2_mock_tool",
+      "status": "BLOCKED_EXTERNAL",
+      "evidence": "reports/control-robot-response.json"
+    },
+    {
+      "name": "official_stable_gateway_rpc",
+      "status": "PASS",
+      "evidence": "artifacts/reports/phase-3-remote-e2e.json"
+    },
+    {
+      "name": "l0_l1_native_sessions_spawn_l2",
+      "status": "BLOCKED_EXTERNAL",
+      "evidence": "artifacts/reports/phase-3-remote-e2e.json"
+    }
+  ],
+  "postgres_tests": [
+    {
+      "name": "real_postgres_16_node_adapter",
+      "status": "PASS",
+      "evidence": "reports/postgres-adapter-suite.log"
+    }
+  ],
+  "isolation_tests": [
+    {
+      "name": "three_scope_postgres_memory_canary_reads",
+      "status": "PASS",
+      "evidence": "reports/memory-*-response.json"
+    },
+    {
+      "name": "gateway_deny_trace_and_no_side_effect",
+      "status": "PASS",
+      "evidence": "reports/deny-no-side-effect.json"
+    }
+  ],
+  "mock_tool_tests": [
+    {
+      "name": "gateway_mock_isolation_suite",
+      "status": "PASS",
+      "evidence": "reports/isolation-suite.log"
+    },
+    {
+      "name": "gateway_deny_trace_and_no_side_effect",
+      "status": "PASS",
+      "evidence": "reports/deny-no-side-effect.json"
+    }
+  ],
+  "lifecycle_tests": [
+    {
+      "name": "fake_clock_lifecycle_suite",
+      "status": "PASS",
+      "evidence": "reports/lifecycle-suite.log"
+    },
+    {
+      "name": "deployed_ttl_unload_and_runtime_restore",
+      "status": "PASS",
+      "evidence": "reports/lifecycle-admin-api.json"
+    }
+  ],
+  "recovery_tests": [
+    {
+      "name": "postgres_control_plane_openclaw_restart_and_new_task",
+      "status": "PASS",
+      "evidence": "reports/recovery-suite.json"
+    }
+  ]
+}

@@ -1,13 +1,13 @@
 # AgentNest 远端只读 Preflight 报告
 
-- 时间：`2026-07-12T04:30:43.728Z`
+- 时间：`2026-07-12T07:38:49.297Z`
 - 目标：`redacted`
 - SSH：PASS（password，host key `SHA256:a2fMlWbZ8lsNYVHw875nlbD0FRvsMPV98ZqzZz59Awc`）
 - OS：`ubuntu 22.04`
 - 架构/内核：`x86_64 / 5.15.0-119-generic`
 - CPU：`4`
 - Memory：`15221 MiB`
-- Free disk：`90678 MiB`
+- Free disk：`78955 MiB`
 - REMOTE_WORKDIR：exists=`yes`，writable=`yes`
 - OpenClaw official stable：`2026.6.11`（npm latest）
 
@@ -27,10 +27,10 @@
 ## 端口
 
 - `18789`: `owned`
-- `18080`: `free`
-- `18081`: `free`
-- `18082`: `free`
-- `15432`: `free`
+- `18080`: `owned`
+- `18081`: `owned`
+- `18082`: `owned`
+- `15432`: `owned`
 
 ## 部署阻塞项
 

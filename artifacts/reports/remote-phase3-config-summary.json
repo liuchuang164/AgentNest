@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-11T16:50:44.793Z",
+  "generated_at": "2026-07-12T07:31:18.405Z",
   "target": "redacted",
   "expected_openclaw_version": "2026.6.11",
   "model_provider": "qwen",
@@ -23,7 +23,8 @@
     "MODEL_NAME": "qwen/qwen3.5-plus",
     "GATEWAY_READY": "yes",
     "DOCTOR_ERROR_COUNT": "0",
-    "OPENCLAW_SCHEMA_SHA256": "d94f740aae95abfb2d54137737d390c114b9e89cf83f0ef5796da2cf05899b29"
+    "OPENCLAW_SCHEMA_SHA256": "761a052958e27676ad40b78f769a50ccde8bd3893bf641b4a7a4a8aba9cea219",
+    "AGENTNEST_PLUGIN": "yes"
   },
   "status": "PASS"
 }

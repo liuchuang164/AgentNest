@@ -1,15 +1,16 @@
 {
   "schema_version": "1.0",
   "phase": 6,
-  "generated_at": "2026-07-12T04:31:09Z",
-  "status": "PASS_LOCAL_READY_FOR_REMOTE",
-  "base_commit": "75b92a568323951569b9f61bb7c62dd727ced4f2",
+  "generated_at": "2026-07-12T07:37:00Z",
+  "status": "PASS_PLATFORM_BLOCKED_EXTERNAL",
+  "deployed_commit": "74b94e150c8982ed5487ffa23b2f90ade0834fef",
+  "verification_run_id": "phase6_d4bb6ccc-4e8f-4397-b68c-8bed5ebf43a9",
   "openclaw_stable": "2026.6.11",
   "local_gate": {
     "format": "PASS",
     "lint": "PASS",
     "typecheck": "PASS",
-    "unit": { "passed": 131, "failed": 0 },
+    "unit": { "passed": 135, "failed": 0 },
     "contract": { "passed": 23, "failed": 0 },
     "integration": { "passed": 42, "failed": 0, "skipped_real_postgres": 1 },
     "isolation": { "passed": 16, "failed": 0 },
@@ -22,6 +23,16 @@
     "blockers": [],
     "evidence": "artifacts/reports/remote-preflight-summary.json"
   },
+  "remote_gate": {
+    "repeatable_deployment": "PASS",
+    "service_health": "PASS",
+    "real_postgres": "PASS",
+    "isolation": "PASS",
+    "lifecycle": "PASS",
+    "recovery": "PASS",
+    "real_model_chains": "BLOCKED_EXTERNAL",
+    "evidence": "artifacts/reports/phase-6-summary.json"
+  },
   "implemented": [
     "Fastify Control Plane and Data/External Gateway Mock services",
     "PostgreSQL 16 gateway operations, trace persistence and scoped reads",
@@ -30,10 +41,5 @@
     "repeatable committed-source deployment and sanitized evidence",
     "remote real PostgreSQL, isolation, lifecycle and recovery verification"
   ],
-  "pending_remote_gate": [
-    "deploy the committed Phase 6 source twice",
-    "run remote status and real PostgreSQL integration",
-    "run three real OpenClaw tenant/business chains",
-    "generate final Phase 6 acceptance report"
-  ]
+  "remaining_blocker": "Qwen provider account returned Arrearage/account not in good standing"
 }

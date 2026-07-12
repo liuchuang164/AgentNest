@@ -4,11 +4,10 @@
 
 ## A. 构建
 
-
 - [x] `pnpm install --frozen-lockfile` 成功。证据：`artifacts/reports/phase-2-summary.md`
 - [x] lint 成功。证据：`artifacts/reports/phase-2-summary.md`
 - [x] TypeScript strict typecheck 成功。证据：`artifacts/reports/phase-2-summary.md`
-- [x] Unit tests 成功。证据：最终本地 Gate 134/134，`artifacts/reports/phase-6-implementation-summary.md`
+- [x] Unit tests 成功。证据：最终本地 Gate 135/135，`artifacts/reports/phase-6-implementation-summary.md`
 - [x] Contract tests 成功。证据：最终本地 Gate 23/23，`artifacts/reports/phase-6-implementation-summary.md`
 - [x] 真实 PostgreSQL/Gateway Integration tests 成功。证据：`real_postgres_16_node_adapter=PASS`，`artifacts/reports/phase-6-verification-summary.json`
 - [x] Secret scan 成功。证据：214 个仓库文件通过，`artifacts/reports/phase-6-implementation-summary.md`
@@ -134,8 +133,8 @@ Kubernetes
 ```text
 Name: Codex
 Date: 2026-07-12
-AgentNest commit: a8f750e7ad1022a5553a17f190cc82a2ee80732d
+AgentNest deployed commit: 74b94e150c8982ed5487ffa23b2f90ade0834fef
 OpenClaw version: 2026.6.11 (e085fa1)
-Verification run_id: 见 `artifacts/reports/phase-6-summary.json`
+Verification run_id: phase6_d4bb6ccc-4e8f-4397-b68c-8bed5ebf43a9
 Conclusion: BLOCKED_EXTERNAL（平台 Gate PASS；模型供应商账务阻断真实链路）
 ```
