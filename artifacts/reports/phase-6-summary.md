@@ -1,8 +1,8 @@
 # Phase 6 云端 Demo 验收摘要
 
-- 结论：`BLOCKED_EXTERNAL`
-- AgentNest commit：`74b94e150c8982ed5487ffa23b2f90ade0834fef`
-- Verification run：`phase6_d4bb6ccc-4e8f-4397-b68c-8bed5ebf43a9`
+- 结论：`PASS`
+- AgentNest commit：`7227d4735752709c4ddfe426bd44b7a691c77636`
+- Verification run：`phase6_a45e7650-6e59-436d-8a86-ada52399fa72`
 - OpenClaw stable：`2026.6.11`
 - Node / pnpm：`v24.18.0` / `11.11.0`
 
@@ -13,18 +13,18 @@
 | remote_read_only_preflight | PASS | `artifacts/reports/remote-preflight-summary.json` | SSH, host capacity and project-owned ports passed the read-only probe |
 | repeatable_compose_deployment | PASS | `artifacts/reports/phase-6-deployment-summary.json` | The same committed source and four loopback/private services passed at least two deployments |
 | deployed_service_health | PASS | `artifacts/reports/phase-6-status.json` | Control Plane, Gateway Mocks, PostgreSQL and OpenClaw are healthy |
-| remote_platform_verification | BLOCKED_EXTERNAL | `artifacts/reports/phase-6-verification-summary.json` | Real PostgreSQL, scoped isolation, lifecycle and recovery evidence is aggregated |
-| real_openclaw_l0_l1_l2_chain | BLOCKED_EXTERNAL | `artifacts/reports/phase-3-remote-e2e.json` | This check is real OpenClaw evidence, not the deterministic local E2E transport |
+| remote_platform_verification | PASS | `artifacts/reports/phase-6-verification-summary.json` | Real PostgreSQL, scoped isolation, lifecycle and recovery evidence is aggregated |
+| real_openclaw_l0_l1_l2_chain | PASS | `artifacts/reports/phase-3-remote-e2e.json` | This check is real OpenClaw evidence, not the deterministic local E2E transport |
 
 ## 自动验证结果
 
 | 类别 | 测试 | 状态 | 证据 |
 | --- | --- | --- | --- |
-| real_openclaw_tests | control_plane_tenant_a_legal_l0_l1_l2_mock_tool | BLOCKED_EXTERNAL | `reports/control-legal-tenant-a-response.json` |
-| real_openclaw_tests | control_plane_tenant_b_legal_l0_l1_l2_mock_tool | BLOCKED_EXTERNAL | `reports/control-legal-tenant-b-response.json` |
-| real_openclaw_tests | control_plane_robot_l0_l1_l2_mock_tool | BLOCKED_EXTERNAL | `reports/control-robot-response.json` |
+| real_openclaw_tests | control_plane_tenant_a_legal_l0_l1_l2_mock_tool | PASS | `reports/control-legal-tenant-a-response.json` |
+| real_openclaw_tests | control_plane_tenant_b_legal_l0_l1_l2_mock_tool | PASS | `reports/control-legal-tenant-b-response.json` |
+| real_openclaw_tests | control_plane_robot_l0_l1_l2_mock_tool | PASS | `reports/control-robot-response.json` |
 | real_openclaw_tests | official_stable_gateway_rpc | PASS | `artifacts/reports/phase-3-remote-e2e.json` |
-| real_openclaw_tests | l0_l1_native_sessions_spawn_l2 | BLOCKED_EXTERNAL | `artifacts/reports/phase-3-remote-e2e.json` |
+| real_openclaw_tests | l0_l1_native_sessions_spawn_l2 | PASS | `artifacts/reports/phase-3-remote-e2e.json` |
 | postgres_tests | real_postgres_16_node_adapter | PASS | `reports/postgres-adapter-suite.log` |
 | isolation_tests | three_scope_postgres_memory_canary_reads | PASS | `reports/memory-*-response.json` |
 | isolation_tests | gateway_deny_trace_and_no_side_effect | PASS | `reports/deny-no-side-effect.json` |

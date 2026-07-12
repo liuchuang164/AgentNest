@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-12T12:25:05Z",
+  "target": "redacted",
+  "initial_gate": {
+    "run_id": "phase6_f729ab68-e13f-4788-95e0-d972615e7798",
+    "status": "FAIL",
+    "provider_blocked": false,
+    "passed": [
+      "tenant_A LEGAL real chain",
+      "tenant_B LEGAL real chain",
+      "official stable Gateway RPC",
+      "native sessions_spawn Phase 3 probe",
+      "real PostgreSQL adapter",
+      "memory isolation",
+      "DENY without side effect",
+      "Gateway Mock isolation",
+      "fake-clock lifecycle suite"
+    ],
+    "failed": [
+      "ROBOT_DOG real chain",
+      "deployed lifecycle",
+      "recovery aggregate"
+    ]
+  },
+  "robot_diagnosis": {
+    "cause": "L0 added the observed stable routed-message clock prefix before the controller envelope; the tenant hook rejected it fail-closed before L2 spawn",
+    "failed_task_operation_count": 0,
+    "failed_task_allow_trace_count": 0,
+    "fix_commits": ["a61e214", "fca6c75"],
+    "targeted_retest": {
+      "task_id": "task_27e2f21f67910e94554d11d8",
+      "status": "PASS",
+      "task_status": "COMPLETED",
+      "native_l2_child_observed": true,
+      "robot_health_write_operation_count": 1,
+      "allow_trace_count": 1,
+      "session_summary_count": 1
+    }
+  },
+  "lifecycle_diagnosis": {
+    "l2_reaper_failed_first_clock": 10,
+    "l2_reaper_failed_second_clock": 11,
+    "recovery_reaper_failed": 10,
+    "historical_failed_tasks_without_session_summary": 11,
+    "scope": "historical AgentNest verifier data created before the current terminal persistence path",
+    "current_successful_tasks_checkpointed": true
+  },
+  "clean_state_reset": {
+    "scope": "AgentNest Demo PostgreSQL database only",
+    "project_marker_required": true,
+    "database_identity_required": "agentnest",
+    "non_project_services_or_host_state_modified": false,
+    "status": "PASS",
+    "performed_at": "2026-07-12T11:39:33Z"
+  },
+  "clean_state_gate_diagnosis": {
+    "run_id": "phase6_fe13a6a5-d0e2-4107-adf4-5e6e4d8705ca",
+    "status": "FAIL",
+    "cause": "OpenClaw stable sessions.create rejected a fixed L1 label retained by the persistent Session Store when PostgreSQL created a new runtime key",
+    "task_rows_created": 0,
+    "execution_context_rows_created": 0,
+    "business_operation_rows_created": 0,
+    "fix_commit": "7227d47"
+  },
+  "repeatable_deployment_proof": {
+    "agentnest_commit": "7227d4735752709c4ddfe426bd44b7a691c77636",
+    "first_success": {
+      "generated_at": "2026-07-12T11:58:31Z",
+      "successful_deploy_count": 25
+    },
+    "second_success": {
+      "generated_at": "2026-07-12T12:20:03Z",
+      "successful_deploy_count": 26
+    },
+    "status": "PASS"
+  },
+  "final_gate": {
+    "run_id": "phase6_a45e7650-6e59-436d-8a86-ada52399fa72",
+    "status": "PASS",
+    "platform_passed": true,
+    "provider_blocked": false,
+    "real_openclaw_tests_passed": 5,
+    "deployed_lifecycle_passed": true,
+    "restart_recovery_passed": true
+  }
+}

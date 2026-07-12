@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "phase": 6,
-  "generated_at": "2026-07-12T07:39:11.323Z",
-  "status": "BLOCKED_EXTERNAL",
-  "completed": false,
-  "agentnest_commit": "74b94e150c8982ed5487ffa23b2f90ade0834fef",
-  "verification_run_id": "phase6_d4bb6ccc-4e8f-4397-b68c-8bed5ebf43a9",
+  "generated_at": "2026-07-12T12:21:03.184Z",
+  "status": "PASS",
+  "completed": true,
+  "agentnest_commit": "7227d4735752709c4ddfe426bd44b7a691c77636",
+  "verification_run_id": "phase6_a45e7650-6e59-436d-8a86-ada52399fa72",
   "runtime": {
     "node": "v24.18.0",
     "pnpm": "11.11.0",
@@ -39,13 +39,13 @@
     },
     {
       "name": "remote_platform_verification",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "PASS",
       "evidence": "artifacts/reports/phase-6-verification-summary.json",
       "note": "Real PostgreSQL, scoped isolation, lifecycle and recovery evidence is aggregated"
     },
     {
       "name": "real_openclaw_l0_l1_l2_chain",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "PASS",
       "evidence": "artifacts/reports/phase-3-remote-e2e.json",
       "note": "This check is real OpenClaw evidence, not the deterministic local E2E transport"
     }
@@ -54,19 +54,19 @@
     {
       "category": "real_openclaw_tests",
       "name": "control_plane_tenant_a_legal_l0_l1_l2_mock_tool",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "PASS",
       "evidence": "reports/control-legal-tenant-a-response.json"
     },
     {
       "category": "real_openclaw_tests",
       "name": "control_plane_tenant_b_legal_l0_l1_l2_mock_tool",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "PASS",
       "evidence": "reports/control-legal-tenant-b-response.json"
     },
     {
       "category": "real_openclaw_tests",
       "name": "control_plane_robot_l0_l1_l2_mock_tool",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "PASS",
       "evidence": "reports/control-robot-response.json"
     },
     {
@@ -78,7 +78,7 @@
     {
       "category": "real_openclaw_tests",
       "name": "l0_l1_native_sessions_spawn_l2",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "PASS",
       "evidence": "artifacts/reports/phase-3-remote-e2e.json"
     },
     {
@@ -131,14 +131,10 @@
     }
   ],
   "evidence_issues": [],
-  "external_blocker": {
-    "provider": "qwen",
-    "code": "Arrearage",
-    "http_status": 400
-  },
+  "external_blocker": null,
   "claims": {
     "deterministic_test_e2e": "LOCAL_FAKE_OPENCLAW_TRANSPORT",
-    "remote_openclaw_chain": "NOT_ACCEPTED",
+    "remote_openclaw_chain": "VERIFIED",
     "gateway_tools": "DETERMINISTIC_MOCKS_WITH_POSTGRES_SIDE_EFFECTS"
   },
   "deferred_production_capabilities": [

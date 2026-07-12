@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-07-12T07:38:49.297Z",
+  "generated_at": "2026-07-12T12:13:26.377Z",
   "target": "redacted",
   "ssh": {
     "connected": true,
@@ -14,7 +14,7 @@
     "KERNEL": "5.15.0-119-generic",
     "CPU_COUNT": "4",
     "MEMORY_MIB": "15221",
-    "DISK_FREE_MIB": "78955",
+    "DISK_FREE_MIB": "76374",
     "WORKDIR_EXISTS": "yes",
     "WORKDIR_IS_DIRECTORY": "yes",
     "PROJECT_OWNERSHIP": "yes",

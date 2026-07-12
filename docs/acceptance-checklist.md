@@ -7,47 +7,47 @@
 - [x] `pnpm install --frozen-lockfile` 成功。证据：`artifacts/reports/phase-2-summary.md`
 - [x] lint 成功。证据：`artifacts/reports/phase-2-summary.md`
 - [x] TypeScript strict typecheck 成功。证据：`artifacts/reports/phase-2-summary.md`
-- [x] Unit tests 成功。证据：最终本地 Gate 135/135，`artifacts/reports/phase-6-implementation-summary.md`
+- [x] Unit tests 成功。证据：最终本地 Gate 144/144，`artifacts/reports/phase-6-implementation-summary.md`
 - [x] Contract tests 成功。证据：最终本地 Gate 23/23，`artifacts/reports/phase-6-implementation-summary.md`
 - [x] 真实 PostgreSQL/Gateway Integration tests 成功。证据：`real_postgres_16_node_adapter=PASS`，`artifacts/reports/phase-6-verification-summary.json`
-- [x] Secret scan 成功。证据：214 个仓库文件通过，`artifacts/reports/phase-6-implementation-summary.md`
+- [x] Secret scan 成功。证据：最终 `pnpm secret:scan` 退出码 0，`artifacts/reports/phase-6-implementation-summary.md`
 - [x] OpenAPI 3.1 文件生成并校验。证据：`openapi/agentnest.openapi.json`、`artifacts/reports/phase-2-summary.md`
 
 ## B. OpenClaw
 
 - [x] 安装官方 stable 版本。证据：`artifacts/reports/remote-bootstrap-summary.json`
-- [x] 版本不含 beta/alpha/rc/dev。证据：`artifacts/reports/phase-3-summary.md`
+- [x] 版本不含 beta/alpha/rc/dev。证据：`artifacts/reports/phase-3-remote-e2e.json`
 - [x] `openclaw doctor` 无阻断问题。证据：`artifacts/reports/remote-phase3-config-summary.json`
-- [x] `openclaw gateway status` RPC 健康。证据：`artifacts/reports/phase-3-summary.md`
-- [x] 第一版未修改 OpenClaw 核心源码。证据：仅使用官方 CLI/config 和外部 Qwen plugin，`artifacts/reports/phase-3-summary.md`
+- [x] `openclaw gateway status` RPC 健康。证据：`artifacts/reports/phase-3-remote-e2e.json`
+- [x] 第一版未修改 OpenClaw 核心源码。证据：仅使用官方 CLI/config 与外部 plugin，`artifacts/reports/remote-phase3-config-summary.json`
 
 ## C. L0 Main Agent
 
-- [x] Main Agent 只拥有 L1 dispatch/status 能力。证据：`artifacts/reports/phase-3-summary.md`
-- [x] Main Agent 看不到 LEGAL/ROBOT_DOG 业务 Skill。证据：远端 observed `skills: []`，`artifacts/reports/phase-3-summary.md`
-- [x] Main Agent 不可调用业务 Tool。证据：六个业务 Tool 显式 deny，`artifacts/reports/phase-3-summary.md`
+- [x] Main Agent 只拥有 L1 dispatch/status 能力。证据：`artifacts/reports/phase-3-remote-e2e.json`
+- [x] Main Agent 看不到 LEGAL/ROBOT_DOG 业务 Skill。证据：远端 observed `skills: []`，`artifacts/reports/phase-3-remote-e2e.json`
+- [x] Main Agent 不可调用业务 Tool。证据：六个业务 Tool 显式 deny，`artifacts/reports/phase-3-remote-e2e.json`
 
 ## D. L1 TenantBizAgent
 
-- [x] 创建 `tenant_A + LEGAL` L1。证据：`tb_9fa3d61c2d63ee4285ee`，`artifacts/reports/phase-3-summary.md`
-- [x] 创建 `tenant_A + ROBOT_DOG` L1。证据：`tb_9345ba25d7668764fb8a`，`artifacts/reports/phase-3-summary.md`
-- [x] 创建 `tenant_B + LEGAL` L1。证据：`tb_4a8ee1cd63e0adcad74e`，`artifacts/reports/phase-3-summary.md`
+- [x] 创建 `tenant_A + LEGAL` L1。证据：`tb_9fa3d61c2d63ee4285ee`，`artifacts/reports/remote-phase3-config-summary.json`
+- [x] 创建 `tenant_A + ROBOT_DOG` L1。证据：`tb_9345ba25d7668764fb8a`，`artifacts/reports/remote-phase3-config-summary.json`
+- [x] 创建 `tenant_B + LEGAL` L1。证据：`tb_4a8ee1cd63e0adcad74e`，`artifacts/reports/remote-phase3-config-summary.json`
 - [x] 三者 `agentId` 不同。证据：`artifacts/reports/remote-phase3-config-summary.json`
 - [x] 三者 workspace 不同。证据：7/7 distinct，`artifacts/reports/remote-phase3-config-summary.json`
 - [x] 三者 agentDir 不同。证据：7/7 distinct，`artifacts/reports/remote-phase3-config-summary.json`
-- [x] 三者 Session namespace 不同。证据：每 Profile 独立 agentDir，`artifacts/reports/phase-3-summary.md`
-- [x] Skill allowlist 与 tenant/biz 配置一致。证据：远端 observed config，`artifacts/reports/phase-3-summary.md`
-- [x] Tool allowlist 与 tenant/biz 配置一致。证据：远端 observed config，`artifacts/reports/phase-3-summary.md`
+- [x] 三者 Session namespace 不同。证据：每 Profile 独立 agentDir，`artifacts/reports/remote-phase3-config-summary.json`
+- [x] Skill allowlist 与 tenant/biz 配置一致。证据：committed Profile payload、`capability-catalog.unit.test.ts`；tenant_A/LEGAL 另有远端 effective 证据，`artifacts/reports/phase-3-remote-e2e.json`
+- [x] Tool allowlist 与 tenant/biz 配置一致。证据：`openclaw-adapter.unit.test.ts`、`phase6-service-layer.unit.test.ts`；tenant_A/LEGAL 另有远端 effective 证据，`artifacts/reports/phase-3-remote-e2e.json`
 - [x] 相同 tenant/biz 重复请求复用 `logical_agent_id`。证据：`ensure-tenant-biz-agent.unit.test.ts`
 
 ## E. L2 TaskAgent
 
-- [ ] L1 使用原生 `sessions_spawn` 创建 L2。证据：
-- [ ] L2 使用独立 Session。证据：
-- [x] L2 配置的 Skill/Tool 是 L1 的子集。证据：远端 3 个 L1/L2 observed Profile，`artifacts/reports/phase-3-summary.md`
-- [ ] L2 请求父级未授权能力时被拒绝。证据：
-- [ ] LEGAL happy path 完成。证据：
-- [ ] ROBOT_DOG happy path 完成。证据：
+- [x] L1 使用原生 `sessions_spawn` 创建 L2。证据：`native_sessions_spawn_task_evidence=true`，`artifacts/reports/phase-3-remote-e2e.json`
+- [x] L2 使用独立 Session。证据：独立 `l2_child_session_key` 与三项 Session evidence，`artifacts/reports/phase-3-remote-e2e.json`
+- [x] L2 配置的 Skill/Tool 是 L1 的子集。证据：`capability-intersection.unit.test.ts`、`phase6-service-layer.unit.test.ts`；tenant_A/LEGAL 另有远端 configured/effective 证据，`artifacts/reports/phase-3-remote-e2e.json`
+- [x] L2 请求父级未授权能力时被拒绝。证据：`capability-intersection.unit.test.ts` 的显式越权 Skill/Tool/action/Memory Scope 用例。
+- [x] LEGAL happy path 完成。证据：tenant_A 与 tenant_B 两条真实链均 `PASS`，`artifacts/reports/phase-6-verification-summary.json`
+- [x] ROBOT_DOG happy path 完成。证据：真实 L2 child、`robot_health_write` operation/ALLOW Trace，`artifacts/reports/phase-6-verification-summary.json`
 
 ## F. Tool 隔离
 
@@ -61,9 +61,9 @@
 
 ## G. Skill 隔离
 
-- [x] LEGAL Agent 看不到 Robot Skill。证据：远端 observed Skill allowlist，`artifacts/reports/phase-3-summary.md`
-- [x] Robot Agent 看不到 Legal Skill。证据：远端 observed Skill allowlist，`artifacts/reports/phase-3-summary.md`
-- [ ] Prompt 写出未授权 Skill 名称仍不能执行。证据：
+- [x] LEGAL Agent 看不到 Robot Skill。证据：committed Profile payload、`capability-catalog.unit.test.ts`、tenant_A/LEGAL 远端 effective registry，`artifacts/reports/phase-3-remote-e2e.json`
+- [x] Robot Agent 看不到 Legal Skill。证据：committed Profile payload、`capability-catalog.unit.test.ts` 与 ROBOT_DOG 真实隔离链，`artifacts/reports/phase-6-verification-summary.json`
+- [x] Prompt/Task 模板请求未授权 Skill 仍不会进入有效能力。证据：`capability-intersection.unit.test.ts` 的 foreign Skill intersection 用例与远端 effective Skill registry，`artifacts/reports/phase-3-remote-e2e.json`
 
 ## H. Memory 隔离
 
@@ -97,11 +97,11 @@
 
 ## K. 云端部署
 
-- [x] `config.txt` 未进入 Git 或报告。证据：`pnpm secret:scan`，`artifacts/reports/phase-3-summary.md`
-- [ ] 干净服务器部署成功。证据：
-- [x] 第二次部署可重复执行。证据：最终 commit 连续两次部署成功，`artifacts/reports/phase-6-deployment-summary.json`
+- [x] `config.txt` 未进入 Git 或报告。证据：最终 `pnpm secret:scan`，`artifacts/reports/phase-6-implementation-summary.md`
+- [x] 目标服务器 bootstrap 与 committed-source 部署成功。证据：`artifacts/reports/remote-bootstrap-summary.json`、`artifacts/reports/phase-6-deployment-summary.json`
+- [x] 第二次部署可重复执行。证据：最终 commit 两次部署时间点与 count 25→26，`artifacts/reports/phase-6-remediation-diagnostic.json`、`artifacts/reports/phase-6-deployment-summary.json`
 - [x] OpenClaw、PostgreSQL、Admin API 未裸露公网。证据：loopback/private bindings 与 4/4 status，`artifacts/reports/phase-6-deployment-summary.json`、`artifacts/reports/phase-6-status.json`
-- [ ] `pnpm demo:verify` 非交互运行并退出码为 0。平台 Gate 全部通过，但百炼 `Arrearage` 使真实链路按设计返回 `BLOCKED_EXTERNAL`/非零；证据：`artifacts/reports/phase-6-verification-summary.json`
+- [x] `pnpm demo:verify` 非交互运行并退出码为 0。证据：run `phase6_a45e7650-6e59-436d-8a86-ada52399fa72`，`artifacts/reports/phase-6-verification-summary.json`
 - [x] README 记录实际 OpenClaw stable 版本。证据：`README.md`
 - [x] 验证报告明确区分真实 OpenClaw 链路与 Mock Tool。证据：`artifacts/reports/phase-6-summary.md`
 
@@ -126,15 +126,15 @@ Kubernetes
 
 - [x] 没有跨租户/跨业务数据或 Memory 泄漏。证据：远端三个 scope Memory canary 与 DENY 无副作用 Gate。
 - [x] 没有 L2 权限提升。证据：Capability intersection、配置/有效 Tool 视图与隔离测试。
-- [ ] 三层 Agent 真实链路已运行。
+- [x] 三层 Agent 真实链路已运行。证据：官方 stable Gateway RPC、L0→L1→native `sessions_spawn`→L2 与三条业务链均 `PASS`。
 - [x] 生命周期卸载与恢复已验证。证据：远端 lifecycle/recovery tests 均 PASS。
 - [x] 已知限制已写入 README/报告。
 
 ```text
 Name: Codex
 Date: 2026-07-12
-AgentNest deployed commit: 74b94e150c8982ed5487ffa23b2f90ade0834fef
+AgentNest deployed commit: 7227d4735752709c4ddfe426bd44b7a691c77636
 OpenClaw version: 2026.6.11 (e085fa1)
-Verification run_id: phase6_d4bb6ccc-4e8f-4397-b68c-8bed5ebf43a9
-Conclusion: BLOCKED_EXTERNAL（平台 Gate PASS；模型供应商账务阻断真实链路）
+Verification run_id: phase6_a45e7650-6e59-436d-8a86-ada52399fa72
+Conclusion: PASS
 ```

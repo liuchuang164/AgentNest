@@ -1,26 +1,26 @@
 {
   "schema_version": "1.0",
-  "run_id": "phase6_d4bb6ccc-4e8f-4397-b68c-8bed5ebf43a9",
-  "generated_at": "2026-07-12T07:35:20.464Z",
+  "run_id": "phase6_a45e7650-6e59-436d-8a86-ada52399fa72",
+  "generated_at": "2026-07-12T12:05:43.057Z",
   "target": "redacted",
-  "status": "BLOCKED_EXTERNAL",
+  "status": "PASS",
   "suite": "all",
   "platform_passed": true,
-  "provider_blocked": true,
+  "provider_blocked": false,
   "real_openclaw_tests": [
     {
       "name": "control_plane_tenant_a_legal_l0_l1_l2_mock_tool",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "PASS",
       "evidence": "reports/control-legal-tenant-a-response.json"
     },
     {
       "name": "control_plane_tenant_b_legal_l0_l1_l2_mock_tool",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "PASS",
       "evidence": "reports/control-legal-tenant-b-response.json"
     },
     {
       "name": "control_plane_robot_l0_l1_l2_mock_tool",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "PASS",
       "evidence": "reports/control-robot-response.json"
     },
     {
@@ -30,7 +30,7 @@
     },
     {
       "name": "l0_l1_native_sessions_spawn_l2",
-      "status": "BLOCKED_EXTERNAL",
+      "status": "PASS",
       "evidence": "artifacts/reports/phase-3-remote-e2e.json"
     }
   ],

@@ -1,16 +1,16 @@
 {
   "schema_version": "1.0",
   "phase": 6,
-  "generated_at": "2026-07-12T07:37:00Z",
-  "status": "PASS_PLATFORM_BLOCKED_EXTERNAL",
-  "deployed_commit": "74b94e150c8982ed5487ffa23b2f90ade0834fef",
-  "verification_run_id": "phase6_d4bb6ccc-4e8f-4397-b68c-8bed5ebf43a9",
+  "generated_at": "2026-07-12T12:25:05Z",
+  "status": "PASS",
+  "deployed_commit": "7227d4735752709c4ddfe426bd44b7a691c77636",
+  "verification_run_id": "phase6_a45e7650-6e59-436d-8a86-ada52399fa72",
   "openclaw_stable": "2026.6.11",
   "local_gate": {
     "format": "PASS",
     "lint": "PASS",
     "typecheck": "PASS",
-    "unit": { "passed": 135, "failed": 0 },
+    "unit": { "passed": 144, "failed": 0 },
     "contract": { "passed": 23, "failed": 0 },
     "integration": { "passed": 42, "failed": 0, "skipped_real_postgres": 1 },
     "isolation": { "passed": 16, "failed": 0 },
@@ -30,8 +30,12 @@
     "isolation": "PASS",
     "lifecycle": "PASS",
     "recovery": "PASS",
-    "real_model_chains": "BLOCKED_EXTERNAL",
-    "evidence": "artifacts/reports/phase-6-summary.json"
+    "real_model_chains": "PASS",
+    "evidence": [
+      "artifacts/reports/phase-6-verification-summary.json",
+      "artifacts/reports/phase-3-remote-e2e.json",
+      "artifacts/reports/phase-6-remediation-diagnostic.json"
+    ]
   },
   "implemented": [
     "Fastify Control Plane and Data/External Gateway Mock services",
@@ -41,5 +45,5 @@
     "repeatable committed-source deployment and sanitized evidence",
     "remote real PostgreSQL, isolation, lifecycle and recovery verification"
   ],
-  "remaining_blocker": "Qwen provider account returned Arrearage/account not in good standing"
+  "remaining_blocker": null
 }
