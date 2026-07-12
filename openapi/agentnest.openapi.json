@@ -66,8 +66,48 @@
               }
             }
           },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -84,12 +124,31 @@
         "operationId": "getTask",
         "parameters": [
           {
-            "name": "X-Request-Id",
-            "in": "header",
+            "name": "request_id",
+            "in": "query",
             "required": true,
             "schema": {
               "minLength": 1,
               "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "biz_domain",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Z][A-Z0-9_]*$",
               "type": "string"
             }
           },
@@ -135,8 +194,48 @@
               }
             }
           },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -153,12 +252,31 @@
         "operationId": "listAgents",
         "parameters": [
           {
-            "name": "X-Request-Id",
-            "in": "header",
+            "name": "request_id",
+            "in": "query",
             "required": true,
             "schema": {
               "minLength": 1,
               "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "biz_domain",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Z][A-Z0-9_]*$",
               "type": "string"
             }
           }
@@ -194,8 +312,48 @@
               }
             }
           },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -212,12 +370,31 @@
         "operationId": "getAgent",
         "parameters": [
           {
-            "name": "X-Request-Id",
-            "in": "header",
+            "name": "request_id",
+            "in": "query",
             "required": true,
             "schema": {
               "minLength": 1,
               "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "biz_domain",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Z][A-Z0-9_]*$",
               "type": "string"
             }
           },
@@ -262,8 +439,48 @@
               }
             }
           },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -280,12 +497,31 @@
         "operationId": "listAgentMemories",
         "parameters": [
           {
-            "name": "X-Request-Id",
-            "in": "header",
+            "name": "request_id",
+            "in": "query",
             "required": true,
             "schema": {
               "minLength": 1,
               "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "biz_domain",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Z][A-Z0-9_]*$",
               "type": "string"
             }
           },
@@ -330,8 +566,48 @@
               }
             }
           },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -365,7 +641,9 @@
                 "additionalProperties": false,
                 "type": "object",
                 "required": [
-                  "request_id"
+                  "request_id",
+                  "tenant_id",
+                  "biz_domain"
                 ],
                 "properties": {
                   "request_id": {
@@ -376,6 +654,15 @@
                   "idempotency_key": {
                     "minLength": 1,
                     "maxLength": 256,
+                    "type": "string"
+                  },
+                  "tenant_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "biz_domain": {
+                    "pattern": "^[A-Z][A-Z0-9_]*$",
                     "type": "string"
                   }
                 }
@@ -414,8 +701,48 @@
               }
             }
           },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -449,7 +776,9 @@
                 "additionalProperties": false,
                 "type": "object",
                 "required": [
-                  "request_id"
+                  "request_id",
+                  "tenant_id",
+                  "biz_domain"
                 ],
                 "properties": {
                   "request_id": {
@@ -460,6 +789,15 @@
                   "idempotency_key": {
                     "minLength": 1,
                     "maxLength": 256,
+                    "type": "string"
+                  },
+                  "tenant_id": {
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "biz_domain": {
+                    "pattern": "^[A-Z][A-Z0-9_]*$",
                     "type": "string"
                   }
                 }
@@ -498,8 +836,48 @@
               }
             }
           },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -571,8 +949,48 @@
               }
             }
           },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -651,8 +1069,48 @@
               }
             }
           },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -710,8 +1168,246 @@
               }
             }
           },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "getLiveness",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Scoped resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lifecycle state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "OpenClaw dispatch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency or model provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -1759,21 +2455,10 @@
           "error": {
             "anyOf": [
               {
-                "additionalProperties": false,
+                "minProperties": 1,
                 "type": "object",
-                "required": [
-                  "category",
-                  "retryable"
-                ],
-                "properties": {
-                  "category": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  "retryable": {
-                    "type": "boolean"
-                  }
+                "patternProperties": {
+                  "^(.*)$": {}
                 }
               },
               {
@@ -1933,21 +2618,10 @@
           "error": {
             "anyOf": [
               {
-                "additionalProperties": false,
+                "minProperties": 1,
                 "type": "object",
-                "required": [
-                  "category",
-                  "retryable"
-                ],
-                "properties": {
-                  "category": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  "retryable": {
-                    "type": "boolean"
-                  }
+                "patternProperties": {
+                  "^(.*)$": {}
                 }
               },
               {
@@ -2116,21 +2790,10 @@
           "error": {
             "anyOf": [
               {
-                "additionalProperties": false,
+                "minProperties": 1,
                 "type": "object",
-                "required": [
-                  "category",
-                  "retryable"
-                ],
-                "properties": {
-                  "category": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  "retryable": {
-                    "type": "boolean"
-                  }
+                "patternProperties": {
+                  "^(.*)$": {}
                 }
               },
               {
@@ -2296,21 +2959,10 @@
           "error": {
             "anyOf": [
               {
-                "additionalProperties": false,
+                "minProperties": 1,
                 "type": "object",
-                "required": [
-                  "category",
-                  "retryable"
-                ],
-                "properties": {
-                  "category": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  "retryable": {
-                    "type": "boolean"
-                  }
+                "patternProperties": {
+                  "^(.*)$": {}
                 }
               },
               {
@@ -2396,21 +3048,10 @@
           "error": {
             "anyOf": [
               {
-                "additionalProperties": false,
+                "minProperties": 1,
                 "type": "object",
-                "required": [
-                  "category",
-                  "retryable"
-                ],
-                "properties": {
-                  "category": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  "retryable": {
-                    "type": "boolean"
-                  }
+                "patternProperties": {
+                  "^(.*)$": {}
                 }
               },
               {
@@ -2530,21 +3171,10 @@
           "error": {
             "anyOf": [
               {
-                "additionalProperties": false,
+                "minProperties": 1,
                 "type": "object",
-                "required": [
-                  "category",
-                  "retryable"
-                ],
-                "properties": {
-                  "category": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  "retryable": {
-                    "type": "boolean"
-                  }
+                "patternProperties": {
+                  "^(.*)$": {}
                 }
               },
               {
@@ -2637,21 +3267,10 @@
           "error": {
             "anyOf": [
               {
-                "additionalProperties": false,
+                "minProperties": 1,
                 "type": "object",
-                "required": [
-                  "category",
-                  "retryable"
-                ],
-                "properties": {
-                  "category": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  "retryable": {
-                    "type": "boolean"
-                  }
+                "patternProperties": {
+                  "^(.*)$": {}
                 }
               },
               {
@@ -2725,21 +3344,10 @@
           "error": {
             "anyOf": [
               {
-                "additionalProperties": false,
+                "minProperties": 1,
                 "type": "object",
-                "required": [
-                  "category",
-                  "retryable"
-                ],
-                "properties": {
-                  "category": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  "retryable": {
-                    "type": "boolean"
-                  }
+                "patternProperties": {
+                  "^(.*)$": {}
                 }
               },
               {
@@ -2824,21 +3432,10 @@
           "error": {
             "anyOf": [
               {
-                "additionalProperties": false,
+                "minProperties": 1,
                 "type": "object",
-                "required": [
-                  "category",
-                  "retryable"
-                ],
-                "properties": {
-                  "category": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  "retryable": {
-                    "type": "boolean"
-                  }
+                "patternProperties": {
+                  "^(.*)$": {}
                 }
               },
               {
@@ -2894,21 +3491,10 @@
           "error": {
             "anyOf": [
               {
-                "additionalProperties": false,
+                "minProperties": 1,
                 "type": "object",
-                "required": [
-                  "category",
-                  "retryable"
-                ],
-                "properties": {
-                  "category": {
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "type": "string"
-                  },
-                  "retryable": {
-                    "type": "boolean"
-                  }
+                "patternProperties": {
+                  "^(.*)$": {}
                 }
               },
               {

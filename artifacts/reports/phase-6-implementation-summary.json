@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "phase": 6,
+  "generated_at": "2026-07-12T04:31:09Z",
+  "status": "PASS_LOCAL_READY_FOR_REMOTE",
+  "base_commit": "75b92a568323951569b9f61bb7c62dd727ced4f2",
+  "openclaw_stable": "2026.6.11",
+  "local_gate": {
+    "format": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "unit": { "passed": 131, "failed": 0 },
+    "contract": { "passed": 23, "failed": 0 },
+    "integration": { "passed": 42, "failed": 0, "skipped_real_postgres": 1 },
+    "isolation": { "passed": 16, "failed": 0 },
+    "lifecycle": { "passed": 19, "failed": 0 },
+    "e2e_fake_openclaw_transport": { "passed": 1, "failed": 0 },
+    "secret_scan": "PASS"
+  },
+  "remote_read_only_preflight": {
+    "status": "PASS",
+    "blockers": [],
+    "evidence": "artifacts/reports/remote-preflight-summary.json"
+  },
+  "implemented": [
+    "Fastify Control Plane and Data/External Gateway Mock services",
+    "PostgreSQL 16 gateway operations, trace persistence and scoped reads",
+    "OpenClaw L0 to L1 dispatch and native L1 sessions_spawn L2 orchestration",
+    "Docker Compose deployment with loopback/private bindings",
+    "repeatable committed-source deployment and sanitized evidence",
+    "remote real PostgreSQL, isolation, lifecycle and recovery verification"
+  ],
+  "pending_remote_gate": [
+    "deploy the committed Phase 6 source twice",
+    "run remote status and real PostgreSQL integration",
+    "run three real OpenClaw tenant/business chains",
+    "generate final Phase 6 acceptance report"
+  ]
+}

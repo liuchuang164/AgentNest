@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -30,6 +30,7 @@ interface ProbeExpectations {
   readonly expectedOpenClawVersion: string;
   readonly taskId: string;
   readonly probeId: string;
+  readonly executionContextId: string;
   readonly mainSessionKey: string;
   readonly l1AgentId: string;
   readonly l1SessionKey: string;
@@ -402,6 +403,7 @@ capture agents_list "$verify_dir/agents-list.json" openclaw agents list --json
 l1_agent_id=$(jq -r '.l1AgentId' "$verify_dir/expected.json")
 l2_agent_id=$(jq -r '.l2AgentId' "$verify_dir/expected.json")
 task_id=$(jq -r '.taskId' "$verify_dir/expected.json")
+execution_context_id=$(jq -r '.executionContextId' "$verify_dir/expected.json")
 main_session_key=$(jq -r '.mainSessionKey' "$verify_dir/expected.json")
 l1_session_key=$(jq -r '.l1SessionKey' "$verify_dir/expected.json")
 capture skills_main "$verify_dir/skills-main.json" openclaw skills list --agent main --eligible --json
@@ -409,6 +411,7 @@ capture skills_l1 "$verify_dir/skills-l1.json" openclaw skills list --agent "$l1
 capture skills_l2 "$verify_dir/skills-l2.json" openclaw skills list --agent "$l2_agent_id" --eligible --json
 
 probe_message=$(printf '%s\n' \
+  "AGENTNEST_CONTROLLER_CONTEXT_V1 {\"execution_context_id\":\"$execution_context_id\"}" \
   'AgentNest Phase 3 deterministic chain probe. Follow the configured routing instructions exactly.' \
   "task_id=$task_id" \
   'tenant_id=tenant_A' \
@@ -447,9 +450,9 @@ while [ "$chain_candidate" = yes ] && [ "$attempt" -lt 120 ]; do
   capture tasks "$verify_dir/tasks.json" openclaw tasks list --runtime subagent --json
   if node "$verify_dir/analyze.mjs" locate "$verify_dir" >/dev/null 2>&1; then
     child_key=$(jq -r '.childSessionKey' "$verify_dir/child-meta.json")
-    child_params=$(jq -cn --arg sessionKey "$child_key" '{sessionKey:$sessionKey,limit:100,includeTools:true}')
+    child_params=$(jq -cn --arg sessionKey "$child_key" '{sessionKey:$sessionKey,limit:100,maxChars:500000}')
     optional "$verify_dir/child-history.json" "$verify_dir/child-history.exit.txt" \
-      openclaw gateway call sessions.history --params "$child_params" --json --timeout 30000
+      openclaw gateway call chat.history --params "$child_params" --json --timeout 30000
     if [ "$(cat "$verify_dir/child-history.exit.txt")" -eq 0 ] && \
       node "$verify_dir/analyze.mjs" marker "$verify_dir" >/dev/null 2>&1; then
       marker_ready=yes
@@ -460,9 +463,9 @@ while [ "$chain_candidate" = yes ] && [ "$attempt" -lt 120 ]; do
   sleep 2
 done
 
-l1_params=$(jq -cn --arg sessionKey "$l1_session_key" '{sessionKey:$sessionKey,limit:100,includeTools:true}')
+l1_params=$(jq -cn --arg sessionKey "$l1_session_key" '{sessionKey:$sessionKey,limit:100,maxChars:500000}')
 optional "$verify_dir/l1-history.json" "$verify_dir/l1-history.exit.txt" \
-  openclaw gateway call sessions.history --params "$l1_params" --json --timeout 30000
+  openclaw gateway call chat.history --params "$l1_params" --json --timeout 30000
 main_tools_params=$(jq -cn --arg sessionKey "$main_session_key" '{sessionKey:$sessionKey}')
 l1_tools_params=$(jq -cn --arg sessionKey "$l1_session_key" '{sessionKey:$sessionKey}')
 optional "$verify_dir/effective-main.json" "$verify_dir/effective-main.exit.txt" \
@@ -554,6 +557,7 @@ function buildExpectations(
     expectedOpenClawVersion: OPENCLAW_2026_6_11,
     taskId,
     probeId,
+    executionContextId: randomUUID(),
     mainSessionKey,
     l1AgentId,
     l1SessionKey,

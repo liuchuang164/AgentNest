@@ -30,6 +30,9 @@ describe("OpenClaw workspace and skill assets", () => {
 
     expect(main).toContain("__L1_ROUTE_TABLE_JSON__");
     expect(main).toContain("sessions_send");
+    expect(main).toContain("AGENTNEST_CONTROLLER_CONTEXT_V1");
+    expect(main).toContain("full original message unchanged");
+    expect(main).toContain("child_session_key=<childSessionKey>");
     expect(main).not.toContain("legal-evidence-check");
     expect(main).not.toContain("robot-dog-health-check");
     expect(main).not.toMatch(
@@ -62,6 +65,8 @@ describe("OpenClaw workspace and skill assets", () => {
       expect(prompt).toContain('"context": "isolated"');
       expect(prompt).toContain('"mode": "run"');
       expect(prompt).toContain('"cleanup": "keep"');
+      expect(prompt).toContain("AGENTNEST_CONTROLLER_CONTEXT_V1");
+      expect(prompt).toContain("first line of the child `task`");
       expect(prompt).toContain(taskType);
       expect(prompt).toContain("__TENANT_ID__");
       expect(prompt).toContain("__BIZ_DOMAIN__");

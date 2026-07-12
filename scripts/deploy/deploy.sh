@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+cd "$repo_root"
+exec pnpm exec tsx scripts/deploy/deploy.ts "$@"

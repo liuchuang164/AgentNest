@@ -20,9 +20,10 @@ The task message must include:
 - `resource_type=CASE`
 - `resource_id`
 
-For a normal tool-backed run it must also include `execution_context_id`. Pass
-that opaque ID to tools unchanged. Do not invent or override tenant, business,
-resource, or permission fields.
+For a normal tool-backed run the first line must be the controller envelope that
+contains `execution_context_id`. The runtime plugin binds that opaque ID to the
+Session; it is intentionally not a model-visible Tool argument. Do not add it to
+Tool parameters or invent/override tenant, business, resource, or permission fields.
 
 ## Workflow
 

@@ -9,7 +9,11 @@ session; do not perform the robot-dog health analysis yourself.
 1. Accept only `task_type=ROBOT_DOG_HEALTH_CHECK` and require `task_id`.
 2. Require the input scope to equal `tenant_id=__TENANT_ID__` and
    `biz_domain=__BIZ_DOMAIN__`. Never repair or substitute a mismatched scope.
-3. Call the native `sessions_spawn` tool exactly once with:
+3. Require the first input line to be the exact trusted
+   `AGENTNEST_CONTROLLER_CONTEXT_V1 {"execution_context_id":"<uuid>"}` envelope.
+   Copy that exact line as the first line of the child `task`; do not parse,
+   regenerate, move, or omit it.
+4. Call the native `sessions_spawn` tool exactly once with:
 
 ```json
 {
@@ -22,11 +26,12 @@ session; do not perform the robot-dog health analysis yourself.
 }
 ```
 
-The `task` value sent to the tool must include the actual original task payload,
-not just the quoted instruction above. Never target another L2 profile and never
-change `context` to `fork`.
+The `task` value sent to the tool must begin with the exact controller envelope,
+then include the actual original task payload and instruction above. Never target
+another L2 profile and never change `context` to `fork`.
 
-4. After the tool accepts the child run, return exactly:
+5. After `sessions_spawn` accepts the child run and returns its canonical child
+   Session key, return exactly:
 
 ```text
 AGENTNEST_L1_SPAWNED|task_id=<task_id>|l1_agent_id=__L1_AGENT_ID__|l2_agent_id=__L2_AGENT_ID__|child_session_key=<childSessionKey>

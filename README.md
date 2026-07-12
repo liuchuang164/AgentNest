@@ -202,8 +202,12 @@ pnpm install
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:e2e
 pnpm demo:preflight
 pnpm demo:deploy
 pnpm demo:status
 pnpm demo:verify
+pnpm demo:report
 ```
+
+`test:e2e` 使用显式 fake OpenClaw transport，对 HTTP → tenant/biz runtime → execution context → L0 dispatch 做确定性应用级测试，不作为真实 OpenClaw 证据。`demo:verify` 才在远端组合真实 PostgreSQL 16、三个 scope Memory canary、DENY Trace/无副作用、TTL unload/restore、进程重启和真实 OpenClaw 链路；模型供应商账务或配额失败会标记为 `BLOCKED_EXTERNAL`，不会伪装成通过。`demo:report` 只消费 `artifacts/reports/` 下已生成的脱敏 JSON，刷新 `phase-6-summary.json` 和 `phase-6-summary.md`；证据缺失、失败或外部阻断时返回非零。

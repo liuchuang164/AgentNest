@@ -326,4 +326,21 @@ describe("AgentNest OpenClaw tenant runtime plugin", () => {
       "agentScopes",
     ]);
   });
+
+  it("ships an archive-installable stable OpenClaw package entry", async () => {
+    const raw: unknown = JSON.parse(
+      await readFile(resolve("packages/tenant-runtime-plugin/package.json"), "utf8"),
+    );
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new TypeError("plugin package manifest must be an object");
+    }
+    const packageManifest = raw as Readonly<Record<string, unknown>>;
+    const openclaw = packageManifest["openclaw"] as Readonly<Record<string, unknown>>;
+    const install = openclaw["install"] as Readonly<Record<string, unknown>>;
+
+    expect(openclaw["extensions"]).toEqual(["./dist/index.js"]);
+    expect(openclaw["runtimeExtensions"]).toEqual(["./dist/index.js"]);
+    expect(install["minHostVersion"]).toBe(">=2026.6.11");
+    expect(packageManifest["files"]).toContain("dist");
+  });
 });

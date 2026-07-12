@@ -12,13 +12,9 @@ import { L1RuntimeStatus, L2TaskStatus } from "./states.js";
 
 const LogicalAgentIdSchema = Type.String({ pattern: "^tb_[a-f0-9]{20}$" });
 const NullableErrorSchema = Type.Union([
-  Type.Object(
-    {
-      category: Type.String({ minLength: 1, maxLength: 64 }),
-      retryable: Type.Boolean(),
-    },
-    { additionalProperties: false },
-  ),
+  Type.Record(Type.String({ minLength: 1, maxLength: 128 }), Type.Unknown(), {
+    minProperties: 1,
+  }),
   Type.Null(),
 ]);
 
@@ -161,6 +157,22 @@ const standardResponses = (successSchema: string): Readonly<Record<string, unkno
     description: "Scope denied",
     content: jsonContent(schemaReference("StandardErrorResponse")),
   },
+  "404": {
+    description: "Scoped resource not found",
+    content: jsonContent(schemaReference("StandardErrorResponse")),
+  },
+  "409": {
+    description: "Lifecycle state conflict",
+    content: jsonContent(schemaReference("StandardErrorResponse")),
+  },
+  "502": {
+    description: "OpenClaw dispatch failed",
+    content: jsonContent(schemaReference("StandardErrorResponse")),
+  },
+  "503": {
+    description: "Dependency or model provider unavailable",
+    content: jsonContent(schemaReference("StandardErrorResponse")),
+  },
   "500": {
     description: "Internal service error",
     content: jsonContent(schemaReference("StandardErrorResponse")),
@@ -178,6 +190,17 @@ const pathParameter = (name: string, schema: TSchema): Readonly<Record<string, u
   required: true,
   schema,
 });
+const queryParameter = (name: string, schema: TSchema): Readonly<Record<string, unknown>> => ({
+  name,
+  in: "query",
+  required: true,
+  schema,
+});
+const scopedQueryParameters = [
+  queryParameter("request_id", IdentifierSchema),
+  queryParameter("tenant_id", IdentifierSchema),
+  queryParameter("biz_domain", Type.String({ pattern: "^[A-Z][A-Z0-9_]*$" })),
+] as const;
 const adminBody = (properties: Readonly<Record<string, TSchema>> = {}) => ({
   required: true,
   content: jsonContent(
@@ -221,28 +244,34 @@ export const openApiDocument: Readonly<Record<string, unknown>> = {
     "/api/tasks/{taskId}": {
       get: {
         operationId: "getTask",
-        parameters: [requestIdHeader, pathParameter("taskId", IdentifierSchema)],
+        parameters: [...scopedQueryParameters, pathParameter("taskId", IdentifierSchema)],
         responses: standardResponses("TaskStatusResponse"),
       },
     },
     "/api/agents": {
       get: {
         operationId: "listAgents",
-        parameters: [requestIdHeader],
+        parameters: scopedQueryParameters,
         responses: standardResponses("AgentListResponse"),
       },
     },
     "/api/agents/{logicalAgentId}": {
       get: {
         operationId: "getAgent",
-        parameters: [requestIdHeader, pathParameter("logicalAgentId", LogicalAgentIdSchema)],
+        parameters: [
+          ...scopedQueryParameters,
+          pathParameter("logicalAgentId", LogicalAgentIdSchema),
+        ],
         responses: standardResponses("AgentStatusResponse"),
       },
     },
     "/api/agents/{logicalAgentId}/memories": {
       get: {
         operationId: "listAgentMemories",
-        parameters: [requestIdHeader, pathParameter("logicalAgentId", LogicalAgentIdSchema)],
+        parameters: [
+          ...scopedQueryParameters,
+          pathParameter("logicalAgentId", LogicalAgentIdSchema),
+        ],
         responses: standardResponses("MemoryListResponse"),
       },
     },
@@ -250,7 +279,10 @@ export const openApiDocument: Readonly<Record<string, unknown>> = {
       post: {
         operationId: "checkpointAgent",
         parameters: [pathParameter("logicalAgentId", LogicalAgentIdSchema)],
-        requestBody: adminBody(),
+        requestBody: adminBody({
+          tenant_id: IdentifierSchema,
+          biz_domain: Type.String({ pattern: "^[A-Z][A-Z0-9_]*$" }),
+        }),
         responses: standardResponses("AdminActionResponse"),
       },
     },
@@ -258,7 +290,10 @@ export const openApiDocument: Readonly<Record<string, unknown>> = {
       post: {
         operationId: "unloadAgent",
         parameters: [pathParameter("logicalAgentId", LogicalAgentIdSchema)],
-        requestBody: adminBody(),
+        requestBody: adminBody({
+          tenant_id: IdentifierSchema,
+          biz_domain: Type.String({ pattern: "^[A-Z][A-Z0-9_]*$" }),
+        }),
         responses: standardResponses("AdminActionResponse"),
       },
     },
@@ -280,6 +315,20 @@ export const openApiDocument: Readonly<Record<string, unknown>> = {
     "/health": {
       get: {
         operationId: "getHealth",
+        parameters: [requestIdHeader],
+        responses: standardResponses("HealthResponse"),
+      },
+    },
+    "/health/live": {
+      get: {
+        operationId: "getLiveness",
+        parameters: [requestIdHeader],
+        responses: standardResponses("HealthResponse"),
+      },
+    },
+    "/health/ready": {
+      get: {
+        operationId: "getReadiness",
         parameters: [requestIdHeader],
         responses: standardResponses("HealthResponse"),
       },

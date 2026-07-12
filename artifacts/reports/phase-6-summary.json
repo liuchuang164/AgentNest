@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "phase": 6,
+  "generated_at": "2026-07-12T04:32:03.041Z",
+  "status": "INCOMPLETE",
+  "completed": false,
+  "agentnest_commit": null,
+  "runtime": {
+    "node": null,
+    "pnpm": null,
+    "docker": null,
+    "compose": null
+  },
+  "openclaw": {
+    "expected_stable_version": "2026.6.11",
+    "observed_version": "2026.6.11",
+    "deployment_version": null,
+    "channel": "stable"
+  },
+  "checks": [
+    {
+      "name": "remote_read_only_preflight",
+      "status": "PASS",
+      "evidence": "artifacts/reports/remote-preflight-summary.json",
+      "note": "SSH, host capacity and project-owned ports passed the read-only probe"
+    },
+    {
+      "name": "repeatable_compose_deployment",
+      "status": "MISSING",
+      "evidence": "artifacts/reports/phase-6-deployment-summary.json",
+      "note": "The same committed source and four loopback/private services passed at least two deployments"
+    },
+    {
+      "name": "deployed_service_health",
+      "status": "MISSING",
+      "evidence": "artifacts/reports/phase-6-status.json",
+      "note": "Control Plane, Gateway Mocks, PostgreSQL and OpenClaw are healthy"
+    },
+    {
+      "name": "remote_platform_verification",
+      "status": "MISSING",
+      "evidence": "artifacts/reports/phase-6-verification-summary.json",
+      "note": "Real PostgreSQL, scoped isolation, lifecycle and recovery evidence is aggregated"
+    },
+    {
+      "name": "real_openclaw_l0_l1_l2_chain",
+      "status": "BLOCKED_EXTERNAL",
+      "evidence": "artifacts/reports/phase-3-remote-e2e.json",
+      "note": "This check is real OpenClaw evidence, not the deterministic local E2E transport"
+    }
+  ],
+  "tests": [],
+  "evidence_issues": [
+    "artifacts/reports/phase-6-deployment-summary.json: missing",
+    "artifacts/reports/phase-6-status.json: missing",
+    "artifacts/reports/phase-6-verification-summary.json: missing"
+  ],
+  "external_blocker": {
+    "provider": "qwen",
+    "code": "Arrearage",
+    "http_status": 400
+  },
+  "claims": {
+    "deterministic_test_e2e": "LOCAL_FAKE_OPENCLAW_TRANSPORT",
+    "remote_openclaw_chain": "NOT_ACCEPTED",
+    "gateway_tools": "DETERMINISTIC_MOCKS_WITH_POSTGRES_SIDE_EFFECTS"
+  },
+  "deferred_production_capabilities": [
+    "Capability tokens and full IAM",
+    "Redis or multi-node coordination",
+    "MinIO or vector memory",
+    "Kubernetes and high availability"
+  ]
+}

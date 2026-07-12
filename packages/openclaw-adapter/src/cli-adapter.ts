@@ -821,7 +821,11 @@ export class OpenClawCliAdapter implements OpenClawAdapter {
     };
     const result = await this.#runner.run(request);
     if (result.exitCode !== 0) {
-      throw new OpenClawCommandError(operation, result.exitCode);
+      const providerBlocked =
+        /Arrearage|account (?:is )?not in good standing|account.*in arrears|overdue-payment|insufficient[_ -]balance|payment required|\bquota\b/iu.test(
+          `${result.stdout}\n${result.stderr}`,
+        );
+      throw new OpenClawCommandError(operation, result.exitCode, { providerBlocked });
     }
     return result;
   }

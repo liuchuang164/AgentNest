@@ -1,0 +1,136 @@
+name: agentnest-demo
+
+x-agentnest-app: &agentnest-app
+  image: agentnest-demo-app:${AGENTNEST_IMAGE_TAG:-local}
+  build:
+    context: .
+    dockerfile: Dockerfile
+    args:
+      OPENCLAW_VERSION: ${OPENCLAW_VERSION:?OPENCLAW_VERSION is required}
+      PNPM_VERSION: ${PNPM_VERSION:-11.11.0}
+  init: true
+  restart: unless-stopped
+  network_mode: host
+  env_file:
+    - ${AGENTNEST_REMOTE_WORKDIR:?AGENTNEST_REMOTE_WORKDIR is required}/config/agentnest.env
+  environment: &agentnest-environment
+    AGENTNEST_PROFILE: demo
+    AGENTNEST_BIND_HOST: 127.0.0.1
+    DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}
+    CONTROL_PLANE_URL: http://127.0.0.1:${CONTROL_PLANE_PORT}
+    DATA_GATEWAY_MOCK_URL: http://127.0.0.1:${DATA_GATEWAY_MOCK_PORT}
+    EXTERNAL_GATEWAY_MOCK_URL: http://127.0.0.1:${EXTERNAL_GATEWAY_MOCK_PORT}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - 127.0.0.1:${POSTGRES_PORT}:5432
+    volumes:
+      - ${AGENTNEST_REMOTE_WORKDIR}/postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  control-plane:
+    <<: *agentnest-app
+    user: ${AGENTNEST_HOST_UID}:${AGENTNEST_HOST_GID}
+    command: ["pnpm", "exec", "tsx", "apps/control-plane/src/main.ts"]
+    environment:
+      <<: *agentnest-environment
+      PORT: ${CONTROL_PLANE_PORT}
+      CONTROL_PLANE_PORT: ${CONTROL_PLANE_PORT}
+      ADMIN_API_ENABLED: "true"
+      TEST_CLOCK_ENABLED: "true"
+      L1_IDLE_TTL_SECONDS: ${L1_IDLE_TTL_SECONDS:-86400}
+      L2_IDLE_TTL_SECONDS: ${L2_IDLE_TTL_SECONDS:-3600}
+      OPENCLAW_STATE_DIR: ${AGENTNEST_REMOTE_WORKDIR}/openclaw-state
+      OPENCLAW_CONFIG_PATH: ${AGENTNEST_REMOTE_WORKDIR}/openclaw-state/openclaw.json
+      OPENCLAW_GATEWAY_URL: ws://127.0.0.1:${OPENCLAW_GATEWAY_PORT}
+      HOME: ${AGENTNEST_REMOTE_WORKDIR}/runtime/container-home
+      AGENTNEST_RUNTIME_ROOT: ${AGENTNEST_REMOTE_WORKDIR}/runtime/openclaw
+      AGENTNEST_CHECKPOINT_ROOT: ${AGENTNEST_REMOTE_WORKDIR}/runtime-persistence
+      DEMO_API_TOKEN: ${DEMO_API_TOKEN}
+    env_file:
+      - ${AGENTNEST_REMOTE_WORKDIR}/config/agentnest.env
+      - ${AGENTNEST_REMOTE_WORKDIR}/openclaw-state/.env
+    volumes:
+      - ${AGENTNEST_REMOTE_WORKDIR}/openclaw-state:${AGENTNEST_REMOTE_WORKDIR}/openclaw-state
+      - ${AGENTNEST_REMOTE_WORKDIR}/runtime:${AGENTNEST_REMOTE_WORKDIR}/runtime
+      - ${AGENTNEST_REMOTE_WORKDIR}/runtime-persistence:${AGENTNEST_REMOTE_WORKDIR}/runtime-persistence
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "--input-type=module",
+          "-e",
+          "const r=await fetch('http://127.0.0.1:${CONTROL_PLANE_PORT}/health',{headers:{'X-Request-Id':'compose-health'}});if(!r.ok)process.exit(1)",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
+
+  data-gateway-mock:
+    <<: *agentnest-app
+    command: ["pnpm", "exec", "tsx", "apps/data-gateway-mock/src/main.ts"]
+    environment:
+      <<: *agentnest-environment
+      PORT: ${DATA_GATEWAY_MOCK_PORT}
+      DATA_GATEWAY_HOST: 127.0.0.1
+      DATA_GATEWAY_PORT: ${DATA_GATEWAY_MOCK_PORT}
+      DATA_GATEWAY_MOCK_PORT: ${DATA_GATEWAY_MOCK_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "--input-type=module",
+          "-e",
+          "const r=await fetch('http://127.0.0.1:${DATA_GATEWAY_MOCK_PORT}/health');if(!r.ok)process.exit(1)",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  external-gateway-mock:
+    <<: *agentnest-app
+    command: ["pnpm", "exec", "tsx", "apps/external-gateway-mock/src/main.ts"]
+    environment:
+      <<: *agentnest-environment
+      PORT: ${EXTERNAL_GATEWAY_MOCK_PORT}
+      EXTERNAL_GATEWAY_HOST: 127.0.0.1
+      EXTERNAL_GATEWAY_PORT: ${EXTERNAL_GATEWAY_MOCK_PORT}
+      EXTERNAL_GATEWAY_MOCK_PORT: ${EXTERNAL_GATEWAY_MOCK_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "--input-type=module",
+          "-e",
+          "const r=await fetch('http://127.0.0.1:${EXTERNAL_GATEWAY_MOCK_PORT}/health');if(!r.ok)process.exit(1)",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 10s

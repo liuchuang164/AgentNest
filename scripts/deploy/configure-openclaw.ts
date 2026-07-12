@@ -59,6 +59,11 @@ interface ConfigurationPayload {
   readonly modelBaseUrl: string;
   readonly profiles: readonly OpenClawProfilePayload[];
   readonly l1AgentIds: readonly string[];
+  readonly plugin: {
+    readonly dataGatewayUrl: string;
+    readonly externalGatewayUrl: string;
+    readonly agentScopes: Readonly<Record<string, { readonly bizDomain: string }>>;
+  };
   readonly workspaces: readonly WorkspacePayload[];
 }
 
@@ -156,6 +161,36 @@ model_name=$(jq -r '.modelName' "$payload")
 model_base_url=$(jq -r '.modelBaseUrl' "$payload")
 profiles=$(jq -c '.profiles' "$payload")
 l1_agent_ids=$(jq -c '.l1AgentIds' "$payload")
+plugin_config=$(jq -c '.plugin' "$payload")
+
+plugin_source="$workdir/source/packages/tenant-runtime-plugin"
+plugin_ready=no
+if [ -d "$plugin_source" ]; then
+  # Stable OpenClaw enables a newly installed plugin immediately. Seed a valid,
+  # disabled entry first so the CLI remains usable between install and enable.
+  openclaw config set plugins.entries.agentnest-tenant-runtime.enabled false --strict-json >/dev/null
+  openclaw config set plugins.entries.agentnest-tenant-runtime.config "$plugin_config" --strict-json >/dev/null
+  plugin_archive_dir="$workdir/config/plugin-archives"
+  install -d -m 0700 "$plugin_archive_dir"
+  find "$plugin_archive_dir" -mindepth 1 -maxdepth 1 -type f -name 'agentnest-tenant-runtime-plugin-*.tgz' -delete
+  pack_result=$(cd "$plugin_source" && npm pack --json --pack-destination "$plugin_archive_dir")
+  plugin_archive_name=$(printf '%s' "$pack_result" | jq -r 'if length == 1 then .[0].filename else empty end')
+  case "$plugin_archive_name" in
+    agentnest-tenant-runtime-plugin-*.tgz) ;;
+    *) printf 'CONFIGURE_FAILED_STAGE=plugin_pack\n'; exit 5 ;;
+  esac
+  plugin_archive="$plugin_archive_dir/$plugin_archive_name"
+  test -f "$plugin_archive"
+  openclaw plugins install --force "$plugin_archive" >/dev/null
+  rm -f "$plugin_archive"
+fi
+if openclaw plugins inspect agentnest-tenant-runtime --json >/dev/null 2>&1; then
+  plugin_ready=yes
+fi
+if [ "$plugin_ready" != yes ]; then
+  printf 'CONFIGURE_FAILED_STAGE=plugin_install\n'
+  exit 6
+fi
 
 openclaw config set gateway.mode local >/dev/null
 openclaw config set gateway.bind loopback >/dev/null
@@ -164,7 +199,10 @@ openclaw config set gateway.auth.mode token >/dev/null
 openclaw config set gateway.auth.token --ref-provider default --ref-source env --ref-id OPENCLAW_GATEWAY_TOKEN >/dev/null
 openclaw config set "models.providers.$model_provider.baseUrl" "$model_base_url" >/dev/null
 openclaw config set "models.providers.$model_provider.apiKey" --ref-provider default --ref-source env --ref-id QWEN_API_KEY >/dev/null
-openclaw config set plugins.allow '["qwen"]' --strict-json >/dev/null
+openclaw config set plugins.allow '["agentnest-tenant-runtime","qwen"]' --strict-json >/dev/null
+openclaw config set plugins.entries.agentnest-tenant-runtime.enabled true --strict-json >/dev/null
+openclaw config set plugins.entries.agentnest-tenant-runtime.config "$plugin_config" --strict-json >/dev/null
+openclaw plugins enable agentnest-tenant-runtime >/dev/null
 openclaw config set agents.defaults.model.primary "$model_name" >/dev/null
 openclaw config set agents.defaults.skills '[]' --strict-json >/dev/null
 openclaw config set agents.defaults.subagents '{"maxConcurrent":5,"maxSpawnDepth":1,"maxChildrenPerAgent":5,"archiveAfterMinutes":0,"runTimeoutSeconds":300,"requireAgentId":true}' --strict-json >/dev/null
@@ -206,6 +244,14 @@ fi
 for agent_id in $(jq -r '.profiles[].id' "$payload"); do
   openclaw agents list --json | jq -e --arg id "$agent_id" '.[] | select(.id == $id)' >/dev/null
 done
+openclaw plugins inspect agentnest-tenant-runtime --runtime --json >/dev/null || {
+  printf 'CONFIGURE_FAILED_STAGE=plugin_runtime\n'
+  exit 7
+}
+openclaw plugins doctor >/dev/null || {
+  printf 'CONFIGURE_FAILED_STAGE=plugin_doctor\n'
+  exit 8
+}
 
 doctor_errors=$(openclaw doctor --lint --json --non-interactive --no-workspace-suggestions 2>/dev/null | jq '[.findings[]? | select(.severity == "error")] | length' 2>/dev/null || printf unknown)
 schema_sha=$(openclaw config schema | sha256sum | awk '{print $1}')
@@ -216,6 +262,7 @@ printf 'MODEL_NAME=%s\n' "$model_name"
 printf 'GATEWAY_READY=yes\n'
 printf 'DOCTOR_ERROR_COUNT=%s\n' "$doctor_errors"
 printf 'OPENCLAW_SCHEMA_SHA256=%s\n' "$schema_sha"
+printf 'AGENTNEST_PLUGIN=%s\n' "$plugin_ready"
 `;
 
 function shellQuote(value: string): string {
@@ -324,6 +371,7 @@ async function buildPayload(config: PreflightConfig): Promise<ConfigurationPaylo
   ]);
   const profiles: OpenClawProfilePayload[] = [];
   const workspaces: WorkspacePayload[] = [];
+  const agentScopes: Record<string, { readonly bizDomain: string }> = {};
   const routeTable = demoCapabilityProfiles.map((capability) => {
     const taskTemplate = demoTaskTemplates.find(
       (candidate) => candidate.bizDomain === capability.biz_domain,
@@ -340,7 +388,7 @@ async function buildPayload(config: PreflightConfig): Promise<ConfigurationPaylo
       biz_domain: capability.biz_domain,
       task_type: taskTemplate.taskType,
       agent_id: agentId,
-      sessionKey: `agent:${agentId}:main`,
+      probe_session_key: `agent:${agentId}:main`,
     };
   });
   const mainWorkspace = `${runtimeRoot}/workspaces/main`;
@@ -383,6 +431,8 @@ async function buildPayload(config: PreflightConfig): Promise<ConfigurationPaylo
       bizDomain: capability.biz_domain,
     });
     const l2AgentId = deriveL2AgentId(logicalAgentId, taskTemplate.taskType);
+    agentScopes[logicalAgentId] = { bizDomain: capability.biz_domain };
+    agentScopes[l2AgentId] = { bizDomain: capability.biz_domain };
     const businessTools = Object.keys(capability.tools).sort();
     const deniedBusinessTools = allBusinessTools.filter(
       (toolName) => !businessTools.includes(toolName),
@@ -464,6 +514,11 @@ async function buildPayload(config: PreflightConfig): Promise<ConfigurationPaylo
     modelBaseUrl: qwenChinaStandardBaseUrl,
     profiles,
     l1AgentIds,
+    plugin: {
+      dataGatewayUrl: `http://127.0.0.1:${String(config.ports[2] ?? 18_081)}`,
+      externalGatewayUrl: `http://127.0.0.1:${String(config.ports[3] ?? 18_082)}`,
+      agentScopes,
+    },
     workspaces,
   };
 }
@@ -511,7 +566,8 @@ async function main(): Promise<void> {
   const observed = parseOutput(configureResult.stdout);
   if (
     observed["CONFIGURE"] !== "PASS" ||
-    Number(observed["PROFILE_COUNT"]) !== payload.profiles.length
+    Number(observed["PROFILE_COUNT"]) !== payload.profiles.length ||
+    observed["AGENTNEST_PLUGIN"] !== "yes"
   ) {
     throw new Error("remote OpenClaw configuration did not match the requested profiles");
   }

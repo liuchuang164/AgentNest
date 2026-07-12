@@ -249,7 +249,37 @@ export interface DataGatewayFixtureSnapshot {
   readonly operations: readonly DataOperationFixture[];
 }
 
-export class InMemoryDataGatewayFixtures {
+export interface DataGatewayPersistenceOperation {
+  readonly requestId: string;
+  readonly traceId: string;
+  readonly executionContextId: string;
+  readonly tenantId: string;
+  readonly bizDomain: string;
+  readonly logicalAgentId: string;
+  readonly runtimeInstanceId: string;
+  readonly sessionId: string;
+  readonly taskId: string;
+  readonly toolName: string;
+  readonly action: string;
+  readonly resourceType: string;
+  readonly resourceId: string;
+  readonly params: Readonly<Record<string, unknown>>;
+  readonly now: Date;
+}
+
+export interface DataGatewayPersistence {
+  ownsResource(
+    tenantId: string,
+    bizDomain: string,
+    resourceType: string,
+    resourceId: string,
+  ): Promise<boolean>;
+  executeDataOperation(
+    input: DataGatewayPersistenceOperation,
+  ): Promise<Readonly<Record<string, unknown>>>;
+}
+
+export class InMemoryDataGatewayFixtures implements DataGatewayPersistence {
   readonly #legalCases: readonly LegalCaseFixture[];
   readonly #robotDevices: readonly RobotDeviceFixture[];
   readonly #legalAnalyses: LegalAnalysisFixture[] = [];
@@ -291,11 +321,7 @@ export class InMemoryDataGatewayFixtures {
     ]);
   }
 
-  public findLegalCase(
-    tenantId: string,
-    bizDomain: string,
-    resourceId: string,
-  ): LegalCaseFixture | null {
+  #findLegalCase(tenantId: string, bizDomain: string, resourceId: string): LegalCaseFixture | null {
     return (
       this.#legalCases.find(
         (fixture) =>
@@ -306,7 +332,7 @@ export class InMemoryDataGatewayFixtures {
     );
   }
 
-  public findRobotDevice(
+  #findRobotDevice(
     tenantId: string,
     bizDomain: string,
     resourceId: string,
@@ -321,7 +347,7 @@ export class InMemoryDataGatewayFixtures {
     );
   }
 
-  public recordLegalAnalysis(
+  #recordLegalAnalysis(
     tenantId: string,
     resourceId: string,
     analysis: string,
@@ -337,7 +363,7 @@ export class InMemoryDataGatewayFixtures {
     return result;
   }
 
-  public recordRobotHealth(
+  #recordRobotHealth(
     tenantId: string,
     resourceId: string,
     healthStatus: "HEALTHY" | "DEGRADED" | "FAULT",
@@ -355,8 +381,77 @@ export class InMemoryDataGatewayFixtures {
     return result;
   }
 
-  public recordOperation(operation: DataOperationFixture): void {
+  #recordOperation(operation: DataOperationFixture): void {
     this.#operations.push(Object.freeze({ ...operation }));
+  }
+
+  public ownsResource(
+    tenantId: string,
+    bizDomain: string,
+    resourceType: string,
+    resourceId: string,
+  ): Promise<boolean> {
+    if (resourceType === "CASE") {
+      return Promise.resolve(this.#findLegalCase(tenantId, bizDomain, resourceId) !== null);
+    }
+    if (resourceType === "DEVICE") {
+      return Promise.resolve(this.#findRobotDevice(tenantId, bizDomain, resourceId) !== null);
+    }
+    return Promise.resolve(false);
+  }
+
+  public executeDataOperation(
+    input: DataGatewayPersistenceOperation,
+  ): Promise<Readonly<Record<string, unknown>>> {
+    this.#recordOperation({
+      tenantId: input.tenantId,
+      bizDomain: input.bizDomain,
+      toolName: input.toolName,
+      action: input.action,
+      resourceId: input.resourceId,
+    });
+    if (input.toolName === "legal_case_read") {
+      const legalCase = this.#findLegalCase(input.tenantId, input.bizDomain, input.resourceId);
+      return Promise.resolve({
+        resource_id: input.resourceId,
+        title: legalCase?.title ?? "",
+        facts: legalCase?.facts ?? [],
+      });
+    }
+    if (input.toolName === "legal_analysis_write") {
+      const analysis = input.params["analysis"];
+      if (typeof analysis !== "string") {
+        throw new TypeError("analysis must be a string");
+      }
+      const result = this.#recordLegalAnalysis(input.tenantId, input.resourceId, analysis);
+      return Promise.resolve({ result_id: result.resultId, stored: true });
+    }
+    if (input.toolName === "robot_device_read") {
+      const device = this.#findRobotDevice(input.tenantId, input.bizDomain, input.resourceId);
+      return Promise.resolve({
+        resource_id: input.resourceId,
+        model: device?.model ?? "",
+        firmware: device?.firmware ?? "",
+      });
+    }
+    if (input.toolName === "robot_health_write") {
+      const healthStatus = input.params["health_status"];
+      if (healthStatus !== "HEALTHY" && healthStatus !== "DEGRADED" && healthStatus !== "FAULT") {
+        throw new TypeError("health_status is invalid");
+      }
+      const note = input.params["note"];
+      if (note !== undefined && typeof note !== "string") {
+        throw new TypeError("note must be a string");
+      }
+      const result = this.#recordRobotHealth(
+        input.tenantId,
+        input.resourceId,
+        healthStatus,
+        note ?? null,
+      );
+      return Promise.resolve({ result_id: result.resultId, stored: true });
+    }
+    throw new TypeError("unsupported Data Gateway operation");
   }
 
   public snapshot(): DataGatewayFixtureSnapshot {
@@ -380,7 +475,7 @@ export class InMemoryGatewayTraceSink implements GatewayTraceSink {
 export interface DataGatewayApplicationOptions {
   readonly contextLookup: ExecutionContextLookup;
   readonly traceSink: GatewayTraceSink;
-  readonly fixtures: InMemoryDataGatewayFixtures;
+  readonly fixtures: DataGatewayPersistence;
   readonly clock: GatewayClock;
   readonly toolOnceGuard: DataGatewayToolOnceGuard;
 }
@@ -457,7 +552,7 @@ function responseStatus(response: DataGatewayResponse): number {
 export class DataGatewayApplication {
   readonly #contextLookup: ExecutionContextLookup;
   readonly #traceSink: GatewayTraceSink;
-  readonly #fixtures: InMemoryDataGatewayFixtures;
+  readonly #fixtures: DataGatewayPersistence;
   readonly #clock: GatewayClock;
   readonly #toolOnceGuard: DataGatewayToolOnceGuard;
 
@@ -511,7 +606,7 @@ export class DataGatewayApplication {
     ) {
       return this.#deny(request, context, GatewayDenyReason.RESOURCE_SCOPE_DENIED, untrustedInput);
     }
-    if (!this.#ownsResource(context, request)) {
+    if (!(await this.#ownsResource(context, request))) {
       return this.#deny(
         request,
         context,
@@ -541,26 +636,13 @@ export class DataGatewayApplication {
     });
   }
 
-  #ownsResource(context: ExecutionContext, request: DataGatewayToolRequest): boolean {
-    if (request.resource.resource_type === "CASE") {
-      return (
-        this.#fixtures.findLegalCase(
-          context.tenant_id,
-          context.biz_domain,
-          request.resource.resource_id,
-        ) !== null
-      );
-    }
-    if (request.resource.resource_type === "DEVICE") {
-      return (
-        this.#fixtures.findRobotDevice(
-          context.tenant_id,
-          context.biz_domain,
-          request.resource.resource_id,
-        ) !== null
-      );
-    }
-    return false;
+  #ownsResource(context: ExecutionContext, request: DataGatewayToolRequest): Promise<boolean> {
+    return this.#fixtures.ownsResource(
+      context.tenant_id,
+      context.biz_domain,
+      request.resource.resource_type,
+      request.resource.resource_id,
+    );
   }
 
   #hasValidParams(request: DataGatewayToolRequest): boolean {
@@ -583,7 +665,7 @@ export class DataGatewayApplication {
   ): Promise<DataGatewayToolOnceResult> {
     if (definition.action === "read") {
       return {
-        result: this.#executeFixtureOperation(context, request),
+        result: await this.#executeFixtureOperation(context, request),
         executed: true,
       };
     }
@@ -603,63 +685,31 @@ export class DataGatewayApplication {
         resourceType: definition.resourceType,
         resourceId: request.resource.resource_id,
       },
-      () => Promise.resolve(this.#executeFixtureOperation(context, request)),
+      () => this.#executeFixtureOperation(context, request),
     );
   }
 
   #executeFixtureOperation(
     context: ExecutionContext,
     request: DataGatewayToolRequest,
-  ): Readonly<Record<string, unknown>> {
-    this.#fixtures.recordOperation({
+  ): Promise<Readonly<Record<string, unknown>>> {
+    return this.#fixtures.executeDataOperation({
+      requestId: request.request_id,
+      traceId: request.trace_id,
+      executionContextId: context.execution_context_id,
       tenantId: context.tenant_id,
       bizDomain: context.biz_domain,
+      logicalAgentId: context.logical_agent_id,
+      runtimeInstanceId: context.runtime_instance_id,
+      sessionId: context.session_id,
+      taskId: context.task_id,
       toolName: request.tool_name,
       action: request.action,
+      resourceType: request.resource.resource_type,
       resourceId: request.resource.resource_id,
+      params: request.params,
+      now: this.#clock.now(),
     });
-
-    if (request.tool_name === "legal_case_read") {
-      const legalCase = this.#fixtures.findLegalCase(
-        context.tenant_id,
-        context.biz_domain,
-        request.resource.resource_id,
-      );
-      return {
-        resource_id: request.resource.resource_id,
-        title: legalCase?.title ?? "",
-        facts: legalCase?.facts ?? [],
-      };
-    }
-    if (request.tool_name === "legal_analysis_write") {
-      const params = request.params as Static<typeof LegalAnalysisParamsSchema>;
-      const result = this.#fixtures.recordLegalAnalysis(
-        context.tenant_id,
-        request.resource.resource_id,
-        params.analysis,
-      );
-      return { result_id: result.resultId, stored: true };
-    }
-    if (request.tool_name === "robot_device_read") {
-      const device = this.#fixtures.findRobotDevice(
-        context.tenant_id,
-        context.biz_domain,
-        request.resource.resource_id,
-      );
-      return {
-        resource_id: request.resource.resource_id,
-        model: device?.model ?? "",
-        firmware: device?.firmware ?? "",
-      };
-    }
-    const params = request.params as Static<typeof RobotHealthParamsSchema>;
-    const result = this.#fixtures.recordRobotHealth(
-      context.tenant_id,
-      request.resource.resource_id,
-      params.health_status,
-      params.note ?? null,
-    );
-    return { result_id: result.resultId, stored: true };
   }
 
   async #deny(

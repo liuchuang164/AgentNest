@@ -6,6 +6,10 @@
   "exports": "./src/index.ts",
   "dependencies": {
     "@agentnest/capability": "workspace:*",
-    "@agentnest/contracts": "workspace:*"
+    "@agentnest/contracts": "workspace:*",
+    "pg": "8.22.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.20.0"
   }
 }

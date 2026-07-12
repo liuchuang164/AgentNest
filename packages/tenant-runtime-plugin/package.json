@@ -18,13 +18,13 @@
   },
   "openclaw": {
     "extensions": [
-      "./src/index.ts"
+      "./dist/index.js"
     ],
     "runtimeExtensions": [
       "./dist/index.js"
     ],
     "install": {
-      "minHostVersion": "2026.6.11"
+      "minHostVersion": ">=2026.6.11"
     }
   },
   "dependencies": {

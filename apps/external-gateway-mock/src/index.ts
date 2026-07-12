@@ -192,7 +192,37 @@ export interface ExternalGatewayFixtureSnapshot {
   readonly operations: readonly ExternalOperationFixture[];
 }
 
-export class InMemoryExternalGatewayFixtures {
+export interface ExternalGatewayPersistenceOperation {
+  readonly requestId: string;
+  readonly traceId: string;
+  readonly executionContextId: string;
+  readonly tenantId: string;
+  readonly bizDomain: string;
+  readonly logicalAgentId: string;
+  readonly runtimeInstanceId: string;
+  readonly sessionId: string;
+  readonly taskId: string;
+  readonly toolName: string;
+  readonly action: string;
+  readonly resourceType: string;
+  readonly resourceId: string;
+  readonly params: Readonly<Record<string, unknown>>;
+  readonly now: Date;
+}
+
+export interface ExternalGatewayPersistence {
+  ownsResource(
+    tenantId: string,
+    bizDomain: string,
+    resourceType: string,
+    resourceId: string,
+  ): Promise<boolean>;
+  executeExternalOperation(
+    input: ExternalGatewayPersistenceOperation,
+  ): Promise<Readonly<Record<string, unknown>>>;
+}
+
+export class InMemoryExternalGatewayFixtures implements ExternalGatewayPersistence {
   readonly #resources: readonly OwnedResourceFixture[];
   readonly #operations: ExternalOperationFixture[] = [];
 
@@ -230,13 +260,15 @@ export class InMemoryExternalGatewayFixtures {
     bizDomain: string,
     resourceType: string,
     resourceId: string,
-  ): boolean {
-    return this.#resources.some(
-      (resource) =>
-        resource.tenantId === tenantId &&
-        resource.bizDomain === bizDomain &&
-        resource.resourceType === resourceType &&
-        resource.resourceId === resourceId,
+  ): Promise<boolean> {
+    return Promise.resolve(
+      this.#resources.some(
+        (resource) =>
+          resource.tenantId === tenantId &&
+          resource.bizDomain === bizDomain &&
+          resource.resourceType === resourceType &&
+          resource.resourceId === resourceId,
+      ),
     );
   }
 
@@ -244,6 +276,43 @@ export class InMemoryExternalGatewayFixtures {
     this.#operations.push(
       Object.freeze({ ...operation, params: Object.freeze(structuredClone(operation.params)) }),
     );
+  }
+
+  public executeExternalOperation(
+    input: ExternalGatewayPersistenceOperation,
+  ): Promise<Readonly<Record<string, unknown>>> {
+    this.recordOperation({
+      tenantId: input.tenantId,
+      bizDomain: input.bizDomain,
+      toolName: input.toolName,
+      resourceId: input.resourceId,
+      params: input.params,
+    });
+    if (input.toolName === "legal_research_query") {
+      const query = input.params["query"];
+      if (typeof query !== "string") {
+        throw new TypeError("query must be a string");
+      }
+      const tenantMarker = input.tenantId === "tenant_A" ? "ALPHA" : "BETA";
+      return Promise.resolve({
+        query,
+        citations: [`${tenantMarker}-STATUTE-101`, `${tenantMarker}-PRECEDENT-7`],
+      });
+    }
+    if (input.toolName === "robot_telemetry_enrich") {
+      const telemetry = input.params["telemetry"];
+      if (!Array.isArray(telemetry) || !telemetry.every((sample) => typeof sample === "number")) {
+        throw new TypeError("telemetry must be a numeric array");
+      }
+      const sum = telemetry.reduce<number>((total, sample) => total + sample, 0);
+      const average = sum / telemetry.length;
+      return Promise.resolve({
+        sample_count: telemetry.length,
+        average,
+        health_band: average >= 0 ? "NOMINAL" : "CHECK_REQUIRED",
+      });
+    }
+    throw new TypeError("unsupported External Gateway operation");
   }
 
   public snapshot(): ExternalGatewayFixtureSnapshot {
@@ -263,7 +332,7 @@ export class InMemoryExternalGatewayTraceSink implements ExternalGatewayTraceSin
 export interface ExternalGatewayApplicationOptions {
   readonly contextLookup: ExternalExecutionContextLookup;
   readonly traceSink: ExternalGatewayTraceSink;
-  readonly fixtures: InMemoryExternalGatewayFixtures;
+  readonly fixtures: ExternalGatewayPersistence;
   readonly clock: ExternalGatewayClock;
 }
 
@@ -333,7 +402,7 @@ function responseStatus(response: ExternalGatewayResponse): number {
 export class ExternalGatewayApplication {
   readonly #contextLookup: ExternalExecutionContextLookup;
   readonly #traceSink: ExternalGatewayTraceSink;
-  readonly #fixtures: InMemoryExternalGatewayFixtures;
+  readonly #fixtures: ExternalGatewayPersistence;
   readonly #clock: ExternalGatewayClock;
 
   public constructor(options: ExternalGatewayApplicationOptions) {
@@ -416,12 +485,12 @@ export class ExternalGatewayApplication {
       );
     }
     if (
-      !this.#fixtures.ownsResource(
+      !(await this.#fixtures.ownsResource(
         context.tenant_id,
         context.biz_domain,
         request.resource.resource_type,
         request.resource.resource_id,
-      )
+      ))
     ) {
       return this.#deny(
         request,
@@ -439,7 +508,7 @@ export class ExternalGatewayApplication {
       );
     }
 
-    const data = this.#executeTool(context, request);
+    const data = await this.#executeTool(context, request);
     await this.#trace(request, context, ExternalGatewayDecision.ALLOW, "TOOL_EXECUTED");
     return Object.freeze({
       success: true,
@@ -465,31 +534,24 @@ export class ExternalGatewayApplication {
   #executeTool(
     context: ExecutionContext,
     request: ExternalGatewayToolRequest,
-  ): Readonly<Record<string, unknown>> {
-    this.#fixtures.recordOperation({
+  ): Promise<Readonly<Record<string, unknown>>> {
+    return this.#fixtures.executeExternalOperation({
+      requestId: request.request_id,
+      traceId: request.trace_id,
+      executionContextId: context.execution_context_id,
       tenantId: context.tenant_id,
       bizDomain: context.biz_domain,
+      logicalAgentId: context.logical_agent_id,
+      runtimeInstanceId: context.runtime_instance_id,
+      sessionId: context.session_id,
+      taskId: context.task_id,
       toolName: request.tool_name,
+      action: request.action,
+      resourceType: request.resource.resource_type,
       resourceId: request.resource.resource_id,
       params: request.params,
+      now: this.#clock.now(),
     });
-
-    if (request.tool_name === "legal_research_query") {
-      const params = request.params as Static<typeof LegalResearchParamsSchema>;
-      const tenantMarker = context.tenant_id === "tenant_A" ? "ALPHA" : "BETA";
-      return {
-        query: params.query,
-        citations: [`${tenantMarker}-STATUTE-101`, `${tenantMarker}-PRECEDENT-7`],
-      };
-    }
-    const params = request.params as Static<typeof RobotTelemetryParamsSchema>;
-    const sum = params.telemetry.reduce((total, sample) => total + sample, 0);
-    const average = sum / params.telemetry.length;
-    return {
-      sample_count: params.telemetry.length,
-      average,
-      health_band: average >= 0 ? "NOMINAL" : "CHECK_REQUIRED",
-    };
   }
 
   async #deny(

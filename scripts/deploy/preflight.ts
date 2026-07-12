@@ -210,6 +210,7 @@ export async function resolveStableVersion(): Promise<StableVersionResult> {
 const remoteProbe = String.raw`set -eu
 workdir=$1
 shift
+openclaw_port=$1
 
 value() {
   key=$1
@@ -243,6 +244,17 @@ if [ -n "$disk_kib" ]; then disk_mib=$((disk_kib / 1024)); fi
 printf 'DISK_FREE_MIB=%s\n' "$disk_mib"
 printf 'WORKDIR_EXISTS=%s\n' "$([ -e "$workdir" ] && printf yes || printf no)"
 printf 'WORKDIR_IS_DIRECTORY=%s\n' "$([ -d "$workdir" ] && printf yes || printf no)"
+project_owned=no
+if [ -f "$workdir/.agentnest-project" ]; then
+  if [ "$(cat "$workdir/.agentnest-project" 2>/dev/null || true)" = agentnest-demo ] && { [ -f "$workdir/config/agentnest.env" ] || { [ -f "$workdir/openclaw-state/openclaw.json" ] && [ -f "$workdir/openclaw-state/.env" ]; }; }; then
+    project_owned=yes
+  fi
+elif [ -f "$workdir/openclaw-state/openclaw.json" ] && [ -f "$workdir/openclaw-state/.env" ]; then
+  # Phase 3 created the project-scoped OpenClaw state before Phase 6 introduced
+  # the ownership marker. The RPC probe below still has to prove the port.
+  project_owned=yes
+fi
+printf 'PROJECT_OWNERSHIP=%s\n' "$project_owned"
 if [ -e "$workdir" ]; then
   printf 'WORKDIR_WRITABLE=%s\n' "$([ -w "$workdir" ] && printf yes || printf no)"
 else
@@ -261,16 +273,34 @@ value NODE_VERSION node --version
 value NPM_VERSION npm --version
 value PNPM_VERSION pnpm --version
 value DOCKER_VERSION docker --version
-if command -v docker >/dev/null 2>&1; then
-  value COMPOSE_VERSION docker compose version
-  printf 'DOCKER_DAEMON=%s\n' "$(docker info >/dev/null 2>&1 && printf reachable || printf unreachable)"
-  conflicts=$(docker ps -a --format '{{.Names}}' 2>/dev/null | grep -E '^agentnest([_-]|$)' | paste -sd, - || true)
+docker_cmd=
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  docker_cmd=docker
+elif command -v docker >/dev/null 2>&1 && sudo -n docker info >/dev/null 2>&1; then
+  docker_cmd='sudo -n docker'
+fi
+if [ -n "$docker_cmd" ]; then
+  compose_version=$($docker_cmd compose version 2>/dev/null | head -n 1 || true)
+  printf 'COMPOSE_VERSION=%s\n' "$(printf '%s' "$compose_version" | tr '\r\n' '  ')"
+  printf 'DOCKER_DAEMON=reachable\n'
+  all_agentnest=$($docker_cmd ps -a --format '{{.Names}}' 2>/dev/null | grep -E '^agentnest([_-]|$)' || true)
+  owned_agentnest=$($docker_cmd ps -a --filter label=com.docker.compose.project=agentnest-demo --format '{{.Names}}' 2>/dev/null || true)
+  if [ "$project_owned" != yes ]; then owned_agentnest=; fi
+  conflicts=
+  for container in $all_agentnest; do
+    if ! printf '%s\n' "$owned_agentnest" | grep -Fxq "$container"; then
+      if [ -n "$conflicts" ]; then conflicts="$conflicts,$container"; else conflicts=$container; fi
+    fi
+  done
   if [ -z "$conflicts" ]; then conflicts=none; fi
   printf 'AGENTNEST_CONTAINER_CONFLICTS=%s\n' "$conflicts"
+  owned_count=$(printf '%s\n' "$owned_agentnest" | awk 'NF {count += 1} END {print count + 0}')
+  printf 'OWNED_COMPOSE_CONTAINER_COUNT=%s\n' "$owned_count"
 else
   printf 'COMPOSE_VERSION=\n'
   printf 'DOCKER_DAEMON=unavailable\n'
   printf 'AGENTNEST_CONTAINER_CONFLICTS=none\n'
+  printf 'OWNED_COMPOSE_CONTAINER_COUNT=0\n'
 fi
 value GIT_VERSION git --version
 value CURL_VERSION curl --version
@@ -283,6 +313,32 @@ for port in "$@"; do
     state=$(netstat -lnt 2>/dev/null | awk 'NR > 2 {print $4}' | grep -Eq "(^|:)$port$" && printf occupied || printf free)
   else
     state=unknown
+  fi
+  if [ "$state" = occupied ] && [ "$project_owned" = yes ]; then
+    env_file="$workdir/config/agentnest.env"
+    port_key=$(awk -F= -v port="$port" '$2 == port && $1 ~ /^(OPENCLAW_GATEWAY_PORT|CONTROL_PLANE_PORT|DATA_GATEWAY_MOCK_PORT|EXTERNAL_GATEWAY_MOCK_PORT|POSTGRES_PORT)$/ {print $1; exit}' "$env_file" 2>/dev/null || true)
+    if [ -z "$port_key" ] && [ "$port" = "$openclaw_port" ]; then port_key=OPENCLAW_GATEWAY_PORT; fi
+    owned=no
+    case "$port_key" in
+      OPENCLAW_GATEWAY_PORT)
+        if [ -f "$workdir/openclaw-state/openclaw.json" ] && [ -f "$workdir/openclaw-state/.env" ]; then
+          if (export OPENCLAW_STATE_DIR="$workdir/openclaw-state"; export OPENCLAW_CONFIG_PATH="$workdir/openclaw-state/openclaw.json"; set -a; . "$workdir/openclaw-state/.env"; set +a; openclaw gateway status --require-rpc --json >/dev/null 2>&1); then owned=yes; fi
+        fi
+        ;;
+      CONTROL_PLANE_PORT)
+        if [ -n "$docker_cmd" ] && $docker_cmd ps --filter label=com.docker.compose.project=agentnest-demo --filter label=com.docker.compose.service=control-plane --filter status=running -q | grep -q . && curl -fsS -H 'X-Request-Id: preflight-ownership' "http://127.0.0.1:$port/health" >/dev/null 2>&1; then owned=yes; fi
+        ;;
+      DATA_GATEWAY_MOCK_PORT)
+        if [ -n "$docker_cmd" ] && $docker_cmd ps --filter label=com.docker.compose.project=agentnest-demo --filter label=com.docker.compose.service=data-gateway-mock --filter status=running -q | grep -q . && curl -fsS -H 'X-Request-Id: preflight-ownership' "http://127.0.0.1:$port/health" >/dev/null 2>&1; then owned=yes; fi
+        ;;
+      EXTERNAL_GATEWAY_MOCK_PORT)
+        if [ -n "$docker_cmd" ] && $docker_cmd ps --filter label=com.docker.compose.project=agentnest-demo --filter label=com.docker.compose.service=external-gateway-mock --filter status=running -q | grep -q . && curl -fsS -H 'X-Request-Id: preflight-ownership' "http://127.0.0.1:$port/health" >/dev/null 2>&1; then owned=yes; fi
+        ;;
+      POSTGRES_PORT)
+        if [ -n "$docker_cmd" ] && $docker_cmd ps --filter label=com.docker.compose.project=agentnest-demo --filter label=com.docker.compose.service=postgres --filter status=running -q | grep -q .; then owned=yes; fi
+        ;;
+    esac
+    if [ "$owned" = yes ]; then state=owned; fi
   fi
   printf 'PORT_%s=%s\n' "$port" "$state"
 done
@@ -353,7 +409,7 @@ function determineBlockers(
     }
   }
   if (probe["AGENTNEST_CONTAINER_CONFLICTS"] !== "none") {
-    blockers.push("pre-existing AgentNest-named containers require ownership confirmation");
+    blockers.push("unknown AgentNest-named containers require ownership confirmation");
   }
   return blockers;
 }

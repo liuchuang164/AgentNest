@@ -314,6 +314,7 @@ pnpm demo:preflight
 pnpm demo:deploy
 pnpm demo:status
 pnpm demo:verify
+pnpm demo:report
 ```
 
 要求：
@@ -353,6 +354,18 @@ pnpm demo:verify
 reports/deployment-summary.json
 reports/verification-summary.json
 ```
+
+本地会保留对应的脱敏验收证据：
+
+```text
+artifacts/reports/phase-6-deployment-summary.json
+artifacts/reports/phase-6-status.json
+artifacts/reports/phase-6-verification-summary.json
+artifacts/reports/phase-6-summary.json
+artifacts/reports/phase-6-summary.md
+```
+
+`demo:report` 不连接服务器，也不读取 `config.txt`；它只汇总已经生成的 JSON evidence。缺少任一必需 evidence 时仍会生成 `INCOMPLETE` 摘要，但命令退出码非零。只有真实 OpenClaw、远端平台、隔离、生命周期和恢复证据全部通过时才输出 `PASS`。
 
 记录：
 

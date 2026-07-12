@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   OpenClawCliAdapter,
+  OpenClawCommandError,
   OpenClawProfileValidationError,
   OpenClawVersionError,
   assertExpectedOpenClawVersion,
@@ -336,6 +337,31 @@ describe("OpenClawCliAdapter gateway dispatch", () => {
       }),
     ).rejects.toBeInstanceOf(OpenClawProfileValidationError);
     expect(runner.calls).toHaveLength(0);
+  });
+
+  it("classifies a provider billing rejection without retaining provider output", async () => {
+    const runner = new ScriptedRunner(success("OpenClaw 2026.6.11 (e085fa1)"), {
+      exitCode: 1,
+      stdout: "",
+      stderr: "request failed: Arrearage; account is not in good standing",
+    });
+    const adapter = new OpenClawCliAdapter(runner);
+
+    const rejected = adapter.dispatchToAgent({
+      agentId: LEGAL_AGENT_ID,
+      sessionKey: `agent:${LEGAL_AGENT_ID}:task_01`,
+      message: "run",
+      idempotencyKey: "dispatch-task-01",
+    });
+
+    await expect(rejected).rejects.toMatchObject({
+      name: "OpenClawCommandError",
+      exitCode: 1,
+      providerBlocked: true,
+    });
+    await expect(rejected).rejects.not.toHaveProperty("stderr");
+    await expect(rejected).rejects.toBeInstanceOf(OpenClawCommandError);
+    runner.expectComplete();
   });
 
   it("uses a fixed isolated native sessions_spawn request only for an allowed child profile", async () => {

@@ -14,11 +14,17 @@ export class OpenClawVersionError extends OpenClawAdapterError {
 
 export class OpenClawCommandError extends OpenClawAdapterError {
   public readonly exitCode: number;
+  public readonly providerBlocked: boolean;
 
-  public constructor(operation: string, exitCode: number) {
+  public constructor(
+    operation: string,
+    exitCode: number,
+    options: { readonly providerBlocked?: boolean } = {},
+  ) {
     super(`${operation} failed with exit code ${String(exitCode)}`);
     this.name = "OpenClawCommandError";
     this.exitCode = exitCode;
+    this.providerBlocked = options.providerBlocked === true;
   }
 }
 
