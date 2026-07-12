@@ -31,5 +31,8 @@ describe("Phase 6 remote shell transport", () => {
     expect(deployment).toContain("postgres:16-alpine");
     expect(deployment).toContain("docker.m.daocloud.io/library/node:24-bookworm-slim");
     expect(deployment).toContain("docker.m.daocloud.io/library/postgres:16-alpine");
+    const dockerfile = await readFile(resolve(workspaceRoot, "Dockerfile"), "utf8");
+    expect(dockerfile).toContain("RUN chown node:node /app");
+    expect(dockerfile).toMatch(/USER node\s*$/u);
   });
 });

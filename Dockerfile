@@ -25,5 +25,6 @@ COPY --chown=node:node packages/test-support/package.json /app/packages/test-sup
 RUN pnpm install --frozen-lockfile
 COPY --chown=node:node . /app
 RUN pnpm --filter @agentnest/tenant-runtime-plugin build
+RUN chown node:node /app
 
 USER node
