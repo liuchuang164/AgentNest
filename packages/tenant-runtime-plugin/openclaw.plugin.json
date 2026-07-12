@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "activation": {
     "onStartup": true,
-    "onCapabilities": ["tool"]
+    "onCapabilities": ["tool", "hook"]
   },
   "contracts": {
     "tools": [

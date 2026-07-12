@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import {
   buildJsonPluginConfigSchema,
@@ -259,13 +259,6 @@ function bindingKey(identity: ExecutionContextBindingIdentity): string | null {
   return null;
 }
 
-function bindingFingerprint(identity: ExecutionContextBindingIdentity): string {
-  const key = bindingKey(identity);
-  return key === null
-    ? "none"
-    : `${key.startsWith("id:") ? "id" : "key"}:${createHash("sha256").update(key).digest("hex").slice(0, 12)}`;
-}
-
 export class ExecutionContextBindingCache {
   readonly #bindings: ExecutionContextBindingMap;
 
@@ -460,28 +453,21 @@ export class TenantRuntimePluginRuntime {
   readonly #config: TenantRuntimePluginConfig | null;
   readonly #bindings: ExecutionContextBindingCache;
   readonly #fetch: GatewayFetch;
-  readonly #diagnostic: (message: string) => void;
-  readonly #runtimeId = randomUUID().slice(0, 8);
 
   public constructor(options: {
     readonly config: TenantRuntimePluginConfig | null;
     readonly bindings?: ExecutionContextBindingCache;
     readonly fetch?: GatewayFetch;
-    readonly diagnostic?: (message: string) => void;
   }) {
     this.#config = options.config;
     this.#bindings = options.bindings ?? new ExecutionContextBindingCache();
     this.#fetch = options.fetch ?? ((url, init) => fetch(url, init));
-    this.#diagnostic = options.diagnostic ?? (() => undefined);
   }
 
   public beforeAgentRun(prompt: string, context: TrustedAgentRunContext): InputGateDecision {
     const { agentId, sessionKey, sessionId } = context;
     const identity = { sessionKey, sessionId };
     if (agentId === undefined || bindingKey(identity) === null) {
-      this.#diagnostic(
-        `runtime=${this.#runtimeId} event=hook-pass-unbound agent=${agentId ?? "none"} identity=${bindingFingerprint(identity)}`,
-      );
       return { outcome: "pass" };
     }
     const scope = this.#config?.agentScopes[agentId];
@@ -492,9 +478,6 @@ export class TenantRuntimePluginRuntime {
     this.#bindings.clear(identity);
     const executionContextId = parseControllerEnvelope(prompt);
     if (executionContextId === null) {
-      this.#diagnostic(
-        `runtime=${this.#runtimeId} event=hook-block agent=${agentId} identity=${bindingFingerprint(identity)}`,
-      );
       return {
         outcome: "block",
         reason: "controller execution context envelope missing or invalid",
@@ -503,9 +486,6 @@ export class TenantRuntimePluginRuntime {
       };
     }
     this.#bindings.bind(identity, agentId, executionContextId);
-    this.#diagnostic(
-      `runtime=${this.#runtimeId} event=hook-bound agent=${agentId} identity=${bindingFingerprint(identity)}`,
-    );
     return { outcome: "pass" };
   }
 
@@ -535,9 +515,6 @@ export class TenantRuntimePluginRuntime {
         }
         const identity = { sessionKey, sessionId };
         const executionContextId = this.#bindings.resolve(identity, agentId);
-        this.#diagnostic(
-          `runtime=${this.#runtimeId} event=tool-resolve tool=${name} agent=${agentId} identity=${bindingFingerprint(identity)} result=${executionContextId === null ? "miss" : "hit"}`,
-        );
         if (executionContextId === null) {
           throw new TenantRuntimeToolDeniedError("EXECUTION_CONTEXT_BINDING_MISSING");
         }
@@ -639,9 +616,6 @@ const tenantRuntimePlugin: OpenClawPluginDefinition = definePluginEntry({
     const runtime = new TenantRuntimePluginRuntime({
       config: parsePluginConfig(api.pluginConfig),
       bindings: new ExecutionContextBindingCache("process"),
-      diagnostic: (message) => {
-        api.logger.info(`[binding-diagnostic] ${message}`);
-      },
     });
     api.on("before_agent_run", (event, context) => runtime.beforeAgentRun(event.prompt, context));
     for (const name of businessToolNames) {

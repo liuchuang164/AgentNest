@@ -73,6 +73,16 @@ describe("Phase 6 remote shell transport", () => {
     expect(configuration).toContain('allow: ["read", ...Object.keys(taskTemplate.tools)].sort()');
   });
 
+  it("activates the tenant plugin conversation hook explicitly on stable OpenClaw", async () => {
+    const configuration = await readFile(
+      resolve(workspaceRoot, "scripts/deploy/configure-openclaw.ts"),
+      "utf8",
+    );
+    expect(configuration).toContain(
+      "plugins.entries.agentnest-tenant-runtime.hooks.allowConversationAccess true --strict-json",
+    );
+  });
+
   it("runs fresh Phase 3 evidence before lifecycle mutates the deployed profiles", async () => {
     const verification = await readFile(resolve(workspaceRoot, "scripts/verify/verify.ts"), "utf8");
     const removeStaleReport = verification.indexOf("await rm(phase3ReportPath, { force: true })");

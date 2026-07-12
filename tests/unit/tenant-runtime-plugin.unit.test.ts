@@ -437,6 +437,7 @@ describe("AgentNest OpenClaw tenant runtime plugin", () => {
       expect(metadata[name]).toEqual({ optional: true });
     }
     expect(activation["onStartup"]).toBe(true);
+    expect(activation["onCapabilities"]).toEqual(["tool", "hook"]);
     expect(configSchema["additionalProperties"]).toBe(false);
     expect(configSchema["required"]).toEqual([
       "dataGatewayUrl",

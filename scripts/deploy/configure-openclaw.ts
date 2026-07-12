@@ -170,6 +170,7 @@ if [ -d "$plugin_source" ]; then
   # disabled entry first so the CLI remains usable between install and enable.
   openclaw config set plugins.entries.agentnest-tenant-runtime.enabled false --strict-json >/dev/null
   openclaw config set plugins.entries.agentnest-tenant-runtime.config "$plugin_config" --strict-json >/dev/null
+  openclaw config set plugins.entries.agentnest-tenant-runtime.hooks.allowConversationAccess true --strict-json >/dev/null
   plugin_archive_dir="$workdir/config/plugin-archives"
   install -d -m 0700 "$plugin_archive_dir"
   find "$plugin_archive_dir" -mindepth 1 -maxdepth 1 -type f -name 'agentnest-tenant-runtime-plugin-*.tgz' -delete
@@ -200,8 +201,9 @@ openclaw config set gateway.auth.token --ref-provider default --ref-source env -
 openclaw config set "models.providers.$model_provider.baseUrl" "$model_base_url" >/dev/null
 openclaw config set "models.providers.$model_provider.apiKey" --ref-provider default --ref-source env --ref-id QWEN_API_KEY >/dev/null
 openclaw config set plugins.allow '["agentnest-tenant-runtime","qwen"]' --strict-json >/dev/null
-openclaw config set plugins.entries.agentnest-tenant-runtime.enabled true --strict-json >/dev/null
 openclaw config set plugins.entries.agentnest-tenant-runtime.config "$plugin_config" --strict-json >/dev/null
+openclaw config set plugins.entries.agentnest-tenant-runtime.hooks.allowConversationAccess true --strict-json >/dev/null
+openclaw config set plugins.entries.agentnest-tenant-runtime.enabled true --strict-json >/dev/null
 openclaw plugins enable agentnest-tenant-runtime >/dev/null
 openclaw config set agents.defaults.model.primary "$model_name" >/dev/null
 openclaw config set agents.defaults.skills '[]' --strict-json >/dev/null
