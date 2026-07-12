@@ -15,7 +15,7 @@ AgentNest 是一个基于 **OpenClaw 官方最新稳定版**的三层多租户 A
 
 ## 当前实现状态
 
-Phase 2 的精简 Tenant Capability Profile、任务能力交集和 PostgreSQL Runtime Registry 已落地。Phase 3 已在远端安装并启动 OpenClaw stable `2026.6.11 (e085fa1)`，配置并观察到固定 L0、3 个 L1 和 3 个 L2 的独立 Profile、workspace、agentDir 与 Skill/Tool allowlist。Phase 4 已实现 PostgreSQL `execution_context`、原生 OpenClaw Tenant Runtime Plugin、Data/External Gateway Mock 和 6 个确定性 Tool；本地隔离测试证明跨业务、跨租户、action、resource、未知/过期 context 均被拒绝且无副作用，并写入可关联 `DENY` Trace。Phase 5 已实现 PostgreSQL Task/Memory/Summary/Trace/Checkpoint Store、本地持久化 volume、1h/24h fake-clock Reaper、恢复和 Tool write-once，并接入 stable Gateway 的 Session create/history/archive 与 L1 Profile 停用；本地 Gate 为 `PASS_LOCAL`。真实 PostgreSQL 16、远端服务装配、重启恢复和三层模型链路仍属于 Phase 6，其中模型调用当前受百炼 `400 Arrearage` 账号账务状态阻断，尚不得宣称 Demo 完成。证据见 [`artifacts/reports/phase-3-summary.md`](artifacts/reports/phase-3-summary.md)、[`artifacts/reports/phase-4-summary.md`](artifacts/reports/phase-4-summary.md) 和 [`artifacts/reports/phase-5-summary.md`](artifacts/reports/phase-5-summary.md)。
+Phase 1–5 的契约、精简 Capability、PostgreSQL Runtime/Task/Memory/Trace/Checkpoint、Gateway Mock、1h/24h Reaper 和恢复链路均已落地。Phase 6 已把 commit `a8f750e` 重复部署到远端：PostgreSQL 16、Control Plane、Data/External Gateway Mock 为 4/4 healthy，OpenClaw stable `2026.6.11 (e085fa1)` 的 Gateway RPC 与 AgentNest plugin 均健康。最终本地 Gate 为 235 项测试通过、0 失败；远端真实 PostgreSQL adapter、三个 scope Memory canary、DENY Trace/无副作用、L1/L2 TTL unload、恢复 lineage、Tool write-once 以及 Control Plane/OpenClaw 重启恢复全部通过。三条真实模型链仍被百炼 `400 Arrearage` 账务状态阻断，因此最终结论为 `BLOCKED_EXTERNAL`，不得宣称 Demo 完成，`demo:verify`/`demo:report` 会按设计返回非零。证据见 [`artifacts/reports/phase-6-summary.md`](artifacts/reports/phase-6-summary.md)。
 
 ## OpenClaw 基线
 
@@ -211,3 +211,5 @@ pnpm demo:report
 ```
 
 `test:e2e` 使用显式 fake OpenClaw transport，对 HTTP → tenant/biz runtime → execution context → L0 dispatch 做确定性应用级测试，不作为真实 OpenClaw 证据。`demo:verify` 才在远端组合真实 PostgreSQL 16、三个 scope Memory canary、DENY Trace/无副作用、TTL unload/restore、进程重启和真实 OpenClaw 链路；模型供应商账务或配额失败会标记为 `BLOCKED_EXTERNAL`，不会伪装成通过。`demo:report` 只消费 `artifacts/reports/` 下已生成的脱敏 JSON，刷新 `phase-6-summary.json` 和 `phase-6-summary.md`；证据缺失、失败或外部阻断时返回非零。
+
+本次远端验收中，除模型供应商账务阻断外的平台 Gate 全部通过。恢复模型账户状态后，重新执行 `pnpm demo:verify && pnpm demo:report` 即可完成剩余真实链路 Gate。

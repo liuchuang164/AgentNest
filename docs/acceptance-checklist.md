@@ -8,10 +8,10 @@
 - [x] `pnpm install --frozen-lockfile` 成功。证据：`artifacts/reports/phase-2-summary.md`
 - [x] lint 成功。证据：`artifacts/reports/phase-2-summary.md`
 - [x] TypeScript strict typecheck 成功。证据：`artifacts/reports/phase-2-summary.md`
-- [x] Unit tests 成功。证据：`artifacts/reports/phase-5-summary.md`（121/121）
-- [x] Contract tests 成功。证据：`artifacts/reports/phase-5-summary.md`（19/19）
-- [ ] 真实 PostgreSQL/Gateway Integration tests 成功。Phase 2 adapter integration 2/2 已通过，真实 PostgreSQL 证据待远端阶段补齐：`artifacts/reports/phase-2-summary.md`
-- [x] Secret scan 成功。证据：`artifacts/reports/phase-2-summary.md`
+- [x] Unit tests 成功。证据：最终本地 Gate 134/134，`artifacts/reports/phase-6-implementation-summary.md`
+- [x] Contract tests 成功。证据：最终本地 Gate 23/23，`artifacts/reports/phase-6-implementation-summary.md`
+- [x] 真实 PostgreSQL/Gateway Integration tests 成功。证据：`real_postgres_16_node_adapter=PASS`，`artifacts/reports/phase-6-verification-summary.json`
+- [x] Secret scan 成功。证据：214 个仓库文件通过，`artifacts/reports/phase-6-implementation-summary.md`
 - [x] OpenAPI 3.1 文件生成并校验。证据：`openapi/agentnest.openapi.json`、`artifacts/reports/phase-2-summary.md`
 
 ## B. OpenClaw
@@ -58,7 +58,7 @@
 - [x] 未授权 action 被拒绝。证据：`gateway-mocks.isolation.test.ts`
 - [x] 未知/过期 `execution_context_id` 被拒绝。证据：`gateway-mocks.isolation.test.ts`
 - [x] body 伪造 tenant/biz 不能覆盖服务端 context。证据：Fastify strict schema 用例，`gateway-mocks.isolation.test.ts`
-- [x] 每次拒绝都有 `DENY` Trace 和原因。证据：15 条 isolation tests，`artifacts/reports/phase-4-summary.md`
+- [x] 每次拒绝都有 `DENY` Trace 和原因。证据：本地 16 条 isolation tests；远端 `gateway_deny_trace_and_no_side_effect=PASS`，`artifacts/reports/phase-6-verification-summary.json`
 
 ## G. Skill 隔离
 
@@ -71,17 +71,17 @@
 - [x] tenant_A/LEGAL 只读取 `ALPHA_LEGAL_MEMORY`。证据：`postgres-phase5-persistence-repository.integration.test.ts`、`artifacts/reports/phase-5-summary.md`
 - [x] tenant_A/ROBOT_DOG 只读取 `ALPHA_ROBOT_MEMORY`。证据：`postgres-phase5-persistence-repository.integration.test.ts`、`artifacts/reports/phase-5-summary.md`
 - [x] tenant_B/LEGAL 只读取 `BETA_LEGAL_MEMORY`。证据：`postgres-phase5-persistence-repository.integration.test.ts`、`artifacts/reports/phase-5-summary.md`
-- [x] 同租户跨业务无泄漏。证据：三 scope Memory canary integration、`artifacts/reports/phase-5-summary.md`
-- [x] 跨租户无泄漏。证据：三 scope Memory canary integration、`artifacts/reports/phase-5-summary.md`
+- [x] 同租户跨业务无泄漏。证据：远端三个 scope Memory canary，`artifacts/reports/phase-6-verification-summary.json`
+- [x] 跨租户无泄漏。证据：远端三个 scope Memory canary，`artifacts/reports/phase-6-verification-summary.json`
 - [x] 恢复只加载当前 tenant/biz 的 Memory 与 Summary。证据：`phase5-adapters.unit.test.ts`、`lifecycle-restore.test.ts`
 
 ## I. 生命周期
 
 - [x] L2 在 TTL 前不因 TTL 卸载。证据：`lifecycle-reaper.test.ts`
-- [x] L2 在 TTL 边界可 checkpoint/unload。证据：`lifecycle-reaper.test.ts`
+- [x] L2 在 TTL 边界可 checkpoint/unload。证据：本地 `lifecycle-reaper.test.ts` 与远端 `deployed_ttl_unload_and_runtime_restore=PASS`
 - [x] L2 卸载前 TaskState、Summary、Memory、Trace 已保存。证据：`phase5-checkpoint-writer.unit.test.ts`、`local-checkpoint-volume.unit.test.ts`
 - [x] L1 在 TTL 前不因 TTL 卸载。证据：`lifecycle-reaper.test.ts`
-- [x] L1 在 TTL 边界且无活动 L2 时可 unload。证据：`lifecycle-reaper.test.ts`、`openclaw-lifecycle-runtime-unloader.unit.test.ts`
+- [x] L1 在 TTL 边界且无活动 L2 时可 unload。证据：本地生命周期测试与远端 `artifacts/reports/phase-6-verification-summary.json`
 - [x] 活动 L2 阻止 L1 unload。证据：`lifecycle-reaper.test.ts`
 - [x] 持久化失败阻止 `UNLOADED` 状态。证据：`lifecycle-reaper.test.ts`、`phase5-checkpoint-writer.unit.test.ts`
 
@@ -91,20 +91,20 @@
 - [x] L1 恢复后 `runtime_instance_id` 改变。证据：`lifecycle-restore.test.ts`
 - [x] `restored_from_runtime_instance_id` 正确。证据：`lifecycle-restore.test.ts`、`phase5-adapters.unit.test.ts`
 - [x] Session Summary 恢复。证据：L1 local checkpoint fallback 与 task summary 用例，`phase5-adapters.unit.test.ts`、`lifecycle-restore.test.ts`
-- [x] Memory 和 Trace 索引恢复。证据：`lifecycle-restore.test.ts`
+- [x] Memory 和 Trace 索引恢复。证据：`lifecycle-restore.test.ts` 与远端 restore evidence，`artifacts/reports/phase-6-verification-summary.json`
 - [x] 未完成 TaskState 可读取或继续。证据：`lifecycle-restore.test.ts`、`postgres-phase5-persistence-repository.integration.test.ts`
 - [x] 已移除 Tool 不会因旧状态恢复。证据：`CatalogCheckpointCapabilitySummarySource` current-policy intersection，`phase5-checkpoint-writer.unit.test.ts`
-- [ ] Control Plane 重启后可从 PostgreSQL 重建 Runtime cache。证据：
+- [x] Control Plane 重启后可从 PostgreSQL 重建 Runtime cache。证据：`postgres_control_plane_openclaw_restart_and_new_task=PASS`，`artifacts/reports/phase-6-verification-summary.json`
 
 ## K. 云端部署
 
 - [x] `config.txt` 未进入 Git 或报告。证据：`pnpm secret:scan`，`artifacts/reports/phase-3-summary.md`
 - [ ] 干净服务器部署成功。证据：
-- [ ] 第二次部署可重复执行。证据：
-- [ ] OpenClaw、PostgreSQL、Admin API 未裸露公网。证据：
-- [ ] `pnpm demo:verify` 非交互运行并退出码为 0。证据：
+- [x] 第二次部署可重复执行。证据：最终 commit 连续两次部署成功，`artifacts/reports/phase-6-deployment-summary.json`
+- [x] OpenClaw、PostgreSQL、Admin API 未裸露公网。证据：loopback/private bindings 与 4/4 status，`artifacts/reports/phase-6-deployment-summary.json`、`artifacts/reports/phase-6-status.json`
+- [ ] `pnpm demo:verify` 非交互运行并退出码为 0。平台 Gate 全部通过，但百炼 `Arrearage` 使真实链路按设计返回 `BLOCKED_EXTERNAL`/非零；证据：`artifacts/reports/phase-6-verification-summary.json`
 - [x] README 记录实际 OpenClaw stable 版本。证据：`README.md`
-- [ ] 验证报告明确区分真实 OpenClaw 链路与 Mock Tool。证据：
+- [x] 验证报告明确区分真实 OpenClaw 链路与 Mock Tool。证据：`artifacts/reports/phase-6-summary.md`
 
 ## L. 非验收项
 
@@ -125,17 +125,17 @@ Kubernetes
 
 ## M. 最终结论
 
-- [ ] 没有跨租户/跨业务数据或 Memory 泄漏。
-- [ ] 没有 L2 权限提升。
+- [x] 没有跨租户/跨业务数据或 Memory 泄漏。证据：远端三个 scope Memory canary 与 DENY 无副作用 Gate。
+- [x] 没有 L2 权限提升。证据：Capability intersection、配置/有效 Tool 视图与隔离测试。
 - [ ] 三层 Agent 真实链路已运行。
-- [ ] 生命周期卸载与恢复已验证。
-- [ ] 已知限制已写入 README/报告。
+- [x] 生命周期卸载与恢复已验证。证据：远端 lifecycle/recovery tests 均 PASS。
+- [x] 已知限制已写入 README/报告。
 
 ```text
-Name:
-Date:
-AgentNest commit:
-OpenClaw version:
-Verification run_id:
-Conclusion: PASS / FAIL
+Name: Codex
+Date: 2026-07-12
+AgentNest commit: a8f750e7ad1022a5553a17f190cc82a2ee80732d
+OpenClaw version: 2026.6.11 (e085fa1)
+Verification run_id: 见 `artifacts/reports/phase-6-summary.json`
+Conclusion: BLOCKED_EXTERNAL（平台 Gate PASS；模型供应商账务阻断真实链路）
 ```

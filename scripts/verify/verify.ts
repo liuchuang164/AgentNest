@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -598,6 +599,7 @@ async function main(): Promise<void> {
       : "FAIL";
   const report = {
     schema_version: "1.0",
+    run_id: `phase6_${randomUUID()}`,
     generated_at: new Date().toISOString(),
     target: "redacted",
     status,

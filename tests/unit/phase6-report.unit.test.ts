@@ -27,6 +27,7 @@ function passingEvidence(): Phase6Evidence {
     status: { schema_version: "1.0", status: "PASS" },
     verification: {
       schema_version: "1.0",
+      run_id: "phase6_00000000-0000-4000-8000-000000000001",
       status: "PASS",
       platform_passed: true,
       isolation_tests: [
@@ -49,6 +50,7 @@ describe("Phase 6 acceptance report", () => {
     expect(report).toMatchObject({
       status: "PASS",
       completed: true,
+      verification_run_id: "phase6_00000000-0000-4000-8000-000000000001",
       claims: {
         deterministic_test_e2e: "LOCAL_FAKE_OPENCLAW_TRANSPORT",
         remote_openclaw_chain: "VERIFIED",

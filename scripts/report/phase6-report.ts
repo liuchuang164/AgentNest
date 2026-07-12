@@ -203,6 +203,7 @@ export function buildPhase6AcceptanceReport(
     status,
     completed: status === "PASS",
     agentnest_commit: safeString(deployment["agentnest_commit"]),
+    verification_run_id: safeString(evidence.verification?.["run_id"]),
     runtime: {
       node: safeString(deployment["node_version"]),
       pnpm: safeString(deployment["pnpm_version"]),
@@ -301,6 +302,7 @@ function renderMarkdown(report: JsonRecord): string {
 
 - 结论：\`${markdownEscape(report["status"])}\`
 - AgentNest commit：\`${markdownEscape(report["agentnest_commit"])}\`
+- Verification run：\`${markdownEscape(report["verification_run_id"])}\`
 - OpenClaw stable：\`${markdownEscape(openclaw["observed_version"])}\`
 - Node / pnpm：\`${markdownEscape(runtime["node"])}\` / \`${markdownEscape(runtime["pnpm"])}\`
 
