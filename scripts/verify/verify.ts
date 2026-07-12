@@ -65,13 +65,13 @@ memory_isolation_pass=true
 deny_no_side_effect_pass=true
 
 if [ "$isolation_selected" = true ]; then
-  if ! compose run -T --rm --no-deps control-plane pnpm test:isolation </dev/null > "$reports/isolation-suite.log" 2>&1; then
+  if ! compose run -T --rm --no-deps --user node -e HOME=/tmp control-plane pnpm test:isolation </dev/null > "$reports/isolation-suite.log" 2>&1; then
     isolation_pass=false
   fi
 fi
 
 if [ "$suite" = all ]; then
-  if ! compose exec -T control-plane sh -c \
+  if ! compose run -T --rm --no-deps --user node -e HOME=/tmp control-plane sh -c \
     'AGENTNEST_TEST_DATABASE_URL="$DATABASE_URL" pnpm exec vitest run --config vitest.integration.config.ts tests/integration/postgres-phase6-real.integration.test.ts' \
     </dev/null \
     > "$reports/postgres-adapter-suite.log" 2>&1; then
@@ -245,7 +245,7 @@ post_json() {
 
 if [ "$lifecycle_selected" = true ]; then
   lifecycle_memory_pass=true
-  if ! compose run -T --rm --no-deps control-plane pnpm test:lifecycle </dev/null > "$reports/lifecycle-suite.log" 2>&1; then
+  if ! compose run -T --rm --no-deps --user node -e HOME=/tmp control-plane pnpm test:lifecycle </dev/null > "$reports/lifecycle-suite.log" 2>&1; then
     lifecycle_suite_pass=false
   fi
   eligible_l2=$(postgres_value -c "SELECT count(*) FROM agent_task WHERE unloaded_at IS NULL AND status IN ('COMPLETED', 'FAILED', 'CHECKPOINTED')")
