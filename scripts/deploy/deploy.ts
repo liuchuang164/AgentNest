@@ -174,6 +174,8 @@ const startServicesScript = String.raw`set -Eeuo pipefail
 workdir=$1
 commit=$2
 phase=$3
+stage=initialization
+trap 'printf "START_SERVICES_FAILED_STAGE=%s\n" "$stage"' ERR
 case "$workdir" in
   /*) ;;
   *) exit 20 ;;
@@ -199,9 +201,12 @@ compose() {
 }
 
 if [ "$phase" = dependencies ]; then
+  stage=compose_build
   compose build
 fi
+stage=postgres_start
 compose up -d postgres
+stage=postgres_readiness
 attempt=0
 until compose exec -T postgres pg_isready -U agentnest -d agentnest >/dev/null 2>&1; do
   attempt=$((attempt + 1))
@@ -210,12 +215,15 @@ until compose exec -T postgres pg_isready -U agentnest -d agentnest >/dev/null 2
 done
 for sql in "$source_dir"/infra/postgres/migrations/*.sql "$source_dir"/infra/postgres/seeds/*.sql; do
   test -f "$sql"
+  stage="postgres_sql_$(basename "$sql")"
   compose exec -T postgres psql -v ON_ERROR_STOP=1 -U agentnest -d agentnest < "$sql" >/dev/null
 done
 if [ "$phase" = dependencies ]; then
+  stage=gateway_mock_start
   compose up -d data-gateway-mock external-gateway-mock
   ports=$(awk -F= '$1 ~ /^(DATA_GATEWAY_MOCK_PORT|EXTERNAL_GATEWAY_MOCK_PORT)$/ {print $2}' "$env_file")
   for port in $ports; do
+    stage="gateway_mock_readiness_$port"
     attempt=0
     until curl -fsS -H 'X-Request-Id: deploy-readiness' "http://127.0.0.1:$port/health" >/dev/null 2>&1; do
       attempt=$((attempt + 1))
@@ -223,14 +231,17 @@ if [ "$phase" = dependencies ]; then
       sleep 2
     done
   done
+  trap - ERR
   printf 'DEPENDENCIES=PASS\n'
   exit 0
 fi
 if [ "$phase" != final ]; then exit 32; fi
+stage=compose_final_start
 compose up -d --remove-orphans
 
 ports=$(awk -F= '$1 ~ /^(CONTROL_PLANE_PORT|DATA_GATEWAY_MOCK_PORT|EXTERNAL_GATEWAY_MOCK_PORT)$/ {print $2}' "$env_file")
 for port in $ports; do
+  stage="final_readiness_$port"
   attempt=0
   until curl -fsS -H 'X-Request-Id: deploy-readiness' "http://127.0.0.1:$port/health" >/dev/null 2>&1; do
     attempt=$((attempt + 1))
@@ -271,6 +282,7 @@ jq -n \
   '{schema_version:"1.0",generated_at:$generated_at,status:"PASS",successful_deploy_count:$successful_deploy_count,agentnest_commit:$commit,services:["postgres","control-plane","data-gateway-mock","external-gateway-mock"],bindings:"loopback_or_private",node_version:$node,pnpm_version:$pnpm,docker_version:$docker,compose_version:$compose,openclaw_version:$openclaw,node_base_image:$node_base_image,postgres_image:$postgres_image}' \
   > "$workdir/reports/deployment-summary.json"
 chmod 0644 "$workdir/reports/deployment-summary.json"
+trap - ERR
 printf 'DEPLOYMENT=PASS\n'
 printf 'SERVICE_COUNT=%s\n' "$(compose config --services | wc -l | tr -d ' ')"
 `;
@@ -512,7 +524,10 @@ async function main(): Promise<void> {
     dependencies.status !== 0 ||
     parseKeyValueOutput(dependencies.stdout)["DEPENDENCIES"] !== "PASS"
   ) {
-    throw new Error("remote PostgreSQL or Gateway Mock deployment failed");
+    const failedStage = parseKeyValueOutput(dependencies.stdout)["START_SERVICES_FAILED_STAGE"];
+    throw new Error(
+      `remote PostgreSQL or Gateway Mock deployment failed at ${failedStage ?? "unknown stage"}`,
+    );
   }
 
   runChecked(
