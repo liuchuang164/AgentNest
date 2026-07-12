@@ -160,7 +160,7 @@ model_provider=$(jq -r '.modelProvider' "$payload")
 model_name=$(jq -r '.modelName' "$payload")
 model_base_url=$(jq -r '.modelBaseUrl' "$payload")
 profiles=$(jq -c '.profiles' "$payload")
-l1_agent_ids=$(jq -c '.l1AgentIds' "$payload")
+agent_to_agent_ids=$(jq -c '["main"] + .l1AgentIds' "$payload")
 plugin_config=$(jq -c '.plugin' "$payload")
 
 plugin_source="$workdir/source/packages/tenant-runtime-plugin"
@@ -209,7 +209,7 @@ openclaw config set agents.defaults.subagents '{"maxConcurrent":5,"maxSpawnDepth
 openclaw config set agents.list "$profiles" --strict-json --replace >/dev/null
 openclaw config set tools.sessions.visibility all >/dev/null
 openclaw config set tools.agentToAgent.enabled true --strict-json >/dev/null
-openclaw config set tools.agentToAgent.allow "$l1_agent_ids" --strict-json >/dev/null
+openclaw config set tools.agentToAgent.allow "$agent_to_agent_ids" --strict-json >/dev/null
 openclaw config set session.agentToAgent.maxPingPongTurns 0 --strict-json >/dev/null
 openclaw config validate --json >/dev/null
 

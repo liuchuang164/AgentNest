@@ -46,6 +46,22 @@ describe("Phase 6 remote shell transport", () => {
     expect(configuration).toContain("openclaw gateway call sessions.delete");
   });
 
+  it("allows both the L0 requester and every L1 target for agent-to-agent routing", async () => {
+    const configuration = await readFile(
+      resolve(workspaceRoot, "scripts/deploy/configure-openclaw.ts"),
+      "utf8",
+    );
+    expect(configuration).toContain(
+      `agent_to_agent_ids=$(jq -c '["main"] + .l1AgentIds' "$payload")`,
+    );
+    expect(configuration).toContain(
+      'openclaw config set tools.agentToAgent.allow "$agent_to_agent_ids" --strict-json',
+    );
+    expect(configuration).not.toContain(
+      'openclaw config set tools.agentToAgent.allow "$l1_agent_ids"',
+    );
+  });
+
   it("runs fresh Phase 3 evidence before lifecycle mutates the deployed profiles", async () => {
     const verification = await readFile(resolve(workspaceRoot, "scripts/verify/verify.ts"), "utf8");
     const removeStaleReport = verification.indexOf("await rm(phase3ReportPath, { force: true })");
