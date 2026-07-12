@@ -53,9 +53,14 @@ sudo npm install -g "pnpm@$pnpm_version" "openclaw@$openclaw_version" >/dev/null
 
 stage=project_directories
 sudo install -d -m 0755 -o "$(id -u)" -g "$(id -g)" "$workdir"
-for directory in source config openclaw-state postgres-data runtime-persistence reports; do
+for directory in source config openclaw-state runtime-persistence reports; do
   install -d -m 0755 "$workdir/$directory"
 done
+if [ ! -e "$workdir/postgres-data" ]; then
+  install -d -m 0755 "$workdir/postgres-data"
+elif [ ! -d "$workdir/postgres-data" ]; then
+  exit 41
+fi
 
 export OPENCLAW_STATE_DIR="$workdir/openclaw-state"
 export OPENCLAW_CONFIG_PATH="$workdir/openclaw-state/openclaw.json"
