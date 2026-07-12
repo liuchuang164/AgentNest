@@ -241,6 +241,8 @@ external-gateway-mock
 
 OpenClaw 可以使用官方推荐 daemon，也可以作为受控容器运行。选择与当前 stable 最兼容、实现最少的方式，并记录实际选择。
 
+部署优先拉取 Docker Hub 的 Node/PostgreSQL Official Images。若目标机无法访问 Docker Hub，则自动回退到 DaoCloud 对相同 Official Image 路径的国内镜像前缀，并把实际镜像源写入脱敏部署报告；脚本不会修改 Docker daemon 的全局 registry 配置。
+
 默认网络：
 
 ```text

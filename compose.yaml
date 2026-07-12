@@ -6,6 +6,7 @@ x-agentnest-app: &agentnest-app
     context: .
     dockerfile: Dockerfile
     args:
+      NODE_BASE_IMAGE: ${AGENTNEST_NODE_BASE_IMAGE:-node:24-bookworm-slim}
       OPENCLAW_VERSION: ${OPENCLAW_VERSION:?OPENCLAW_VERSION is required}
       PNPM_VERSION: ${PNPM_VERSION:-11.11.0}
   init: true
@@ -23,7 +24,7 @@ x-agentnest-app: &agentnest-app
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: ${AGENTNEST_POSTGRES_IMAGE:-postgres:16-alpine}
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}

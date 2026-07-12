@@ -98,6 +98,27 @@ existing_value() {
     awk -F= -v key="$key" '$1 == key {print substr($0, index($0, "=") + 1)}' "$env_file" | tail -n 1
   fi
 }
+if docker info >/dev/null 2>&1; then docker_cmd=docker; else sudo -n docker info >/dev/null; docker_cmd='sudo -n docker'; fi
+select_official_image() {
+  existing=$1
+  official=$2
+  mirror=$3
+  case "$existing" in "$official"|"$mirror") candidates="$existing $official $mirror" ;; *) candidates="$official $mirror" ;; esac
+  for candidate in $candidates; do
+    if $docker_cmd image inspect "$candidate" >/dev/null 2>&1; then printf '%s\n' "$candidate"; return 0; fi
+    if [ "$candidate" = "$official" ]; then pull_timeout=45; else pull_timeout=300; fi
+    if timeout "$pull_timeout" $docker_cmd pull "$candidate" >/dev/null 2>&1; then printf '%s\n' "$candidate"; return 0; fi
+  done
+  return 1
+}
+node_base_image=$(select_official_image "$(existing_value AGENTNEST_NODE_BASE_IMAGE)" node:24-bookworm-slim docker.m.daocloud.io/library/node:24-bookworm-slim) || {
+  printf 'SOURCE_FAILED_STAGE=node_base_image\n'
+  exit 24
+}
+postgres_image=$(select_official_image "$(existing_value AGENTNEST_POSTGRES_IMAGE)" postgres:16-alpine docker.m.daocloud.io/library/postgres:16-alpine) || {
+  printf 'SOURCE_FAILED_STAGE=postgres_image\n'
+  exit 25
+}
 postgres_password=$(existing_value POSTGRES_PASSWORD)
 demo_api_token=$(existing_value DEMO_API_TOKEN)
 if ! printf '%s' "$postgres_password" | grep -Eq '^[a-f0-9]{64}$'; then
@@ -112,6 +133,8 @@ temporary="$env_file.tmp.$$"
   printf 'AGENTNEST_HOST_UID=%s\n' "$(id -u)"
   printf 'AGENTNEST_HOST_GID=%s\n' "$(id -g)"
   printf 'AGENTNEST_IMAGE_TAG=%s\n' "$image_tag"
+  printf 'AGENTNEST_NODE_BASE_IMAGE=%s\n' "$node_base_image"
+  printf 'AGENTNEST_POSTGRES_IMAGE=%s\n' "$postgres_image"
   printf 'OPENCLAW_VERSION=%s\n' "$openclaw_version"
   printf 'PNPM_VERSION=11.11.0\n'
   printf 'OPENCLAW_GATEWAY_PORT=%s\n' "$openclaw_port"
@@ -242,8 +265,10 @@ jq -n \
   --arg docker "$docker_version" \
   --arg compose "$compose_version" \
   --arg openclaw "$openclaw_version" \
+  --arg node_base_image "$AGENTNEST_NODE_BASE_IMAGE" \
+  --arg postgres_image "$AGENTNEST_POSTGRES_IMAGE" \
   --argjson successful_deploy_count "$successful_deploy_count" \
-  '{schema_version:"1.0",generated_at:$generated_at,status:"PASS",successful_deploy_count:$successful_deploy_count,agentnest_commit:$commit,services:["postgres","control-plane","data-gateway-mock","external-gateway-mock"],bindings:"loopback_or_private",node_version:$node,pnpm_version:$pnpm,docker_version:$docker,compose_version:$compose,openclaw_version:$openclaw}' \
+  '{schema_version:"1.0",generated_at:$generated_at,status:"PASS",successful_deploy_count:$successful_deploy_count,agentnest_commit:$commit,services:["postgres","control-plane","data-gateway-mock","external-gateway-mock"],bindings:"loopback_or_private",node_version:$node,pnpm_version:$pnpm,docker_version:$docker,compose_version:$compose,openclaw_version:$openclaw,node_base_image:$node_base_image,postgres_image:$postgres_image}' \
   > "$workdir/reports/deployment-summary.json"
 chmod 0644 "$workdir/reports/deployment-summary.json"
 printf 'DEPLOYMENT=PASS\n'
@@ -317,6 +342,18 @@ function sanitizeDeploymentSummary(
   if (!openclawVersion.includes(expectedOpenClawVersion)) {
     throw new Error("remote deployment summary OpenClaw version does not match stable");
   }
+  const nodeBaseImage = readSafeVersion(record["node_base_image"], "node_base_image");
+  const postgresImage = readSafeVersion(record["postgres_image"], "postgres_image");
+  if (
+    !["node:24-bookworm-slim", "docker.m.daocloud.io/library/node:24-bookworm-slim"].includes(
+      nodeBaseImage,
+    ) ||
+    !["postgres:16-alpine", "docker.m.daocloud.io/library/postgres:16-alpine"].includes(
+      postgresImage,
+    )
+  ) {
+    throw new Error("remote deployment summary contains an unsupported official-image source");
+  }
   if (
     record["schema_version"] !== "1.0" ||
     record["status"] !== "PASS" ||
@@ -345,6 +382,8 @@ function sanitizeDeploymentSummary(
     docker_version: readSafeVersion(record["docker_version"], "docker_version"),
     compose_version: readSafeVersion(record["compose_version"], "compose_version"),
     openclaw_version: openclawVersion,
+    node_base_image: nodeBaseImage,
+    postgres_image: postgresImage,
   };
 }
 

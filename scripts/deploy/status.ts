@@ -29,9 +29,29 @@ printf 'DEPLOYMENT_FILES=present\n'
 if docker info >/dev/null 2>&1; then docker_cmd=docker; else docker_cmd='sudo -n docker'; fi
 compose() { $docker_cmd compose --project-name agentnest-demo --env-file "$env_file" -f "$source_dir/compose.yaml" "$@"; }
 expected=$(compose config --services 2>/dev/null | wc -l | tr -d ' ')
-running=$(compose ps --services --status running 2>/dev/null | wc -l | tr -d ' ')
+running_lines=$(compose ps --services --status running 2>/dev/null)
+running=$(printf '%s\n' "$running_lines" | awk 'NF {count += 1} END {print count + 0}')
+running_names=$(printf '%s\n' "$running_lines" | awk 'NF' | paste -sd, -)
+if [ -z "$running_names" ]; then running_names=none; fi
 printf 'SERVICE_EXPECTED=%s\n' "$expected"
 printf 'SERVICE_RUNNING=%s\n' "$running"
+printf 'SERVICE_RUNNING_NAMES=%s\n' "$running_names"
+for service in postgres control-plane data-gateway-mock external-gateway-mock; do
+  key=$(printf '%s' "$service" | tr '[:lower:]-' '[:upper:]_')
+  container_id=$(compose ps --all --quiet "$service" 2>/dev/null || true)
+  if [ -z "$container_id" ]; then
+    state=missing
+    health=none
+    exit_code=none
+  else
+    state=$($docker_cmd inspect --format '{{.State.Status}}' "$container_id" 2>/dev/null || printf unknown)
+    health=$($docker_cmd inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" 2>/dev/null || printf unknown)
+    exit_code=$($docker_cmd inspect --format '{{.State.ExitCode}}' "$container_id" 2>/dev/null || printf unknown)
+  fi
+  printf 'SERVICE_%s_STATE=%s\n' "$key" "$state"
+  printf 'SERVICE_%s_HEALTH=%s\n' "$key" "$health"
+  printf 'SERVICE_%s_EXIT=%s\n' "$key" "$exit_code"
+done
 set -a
 . "$env_file"
 set +a
