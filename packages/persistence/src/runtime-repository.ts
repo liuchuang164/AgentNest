@@ -38,3 +38,15 @@ export interface EnsureActiveRuntimeResult {
 export interface TenantRuntimeRepository {
   ensureActiveRuntime(input: EnsureActiveRuntimeInput): Promise<EnsureActiveRuntimeResult>;
 }
+
+export interface MarkRuntimeReadyInput {
+  readonly scope: TenantBizScope;
+  readonly logicalAgentId: string;
+  readonly runtimeInstanceId: string;
+  readonly status: L1RuntimeStatus.ACTIVE | L1RuntimeStatus.IDLE;
+  readonly now: Date;
+}
+
+export interface TenantRuntimeLifecycleRepository extends TenantRuntimeRepository {
+  markRuntimeReady(input: MarkRuntimeReadyInput): Promise<void>;
+}

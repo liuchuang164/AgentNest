@@ -129,6 +129,44 @@ export interface SpawnTaskAgentInput {
   readonly timeoutMs?: number;
 }
 
+export interface ArchiveSessionInput {
+  /** Canonical OpenClaw agent session key, for example `agent:<agentId>:<session>`. */
+  readonly sessionKey: string;
+  readonly timeoutMs?: number;
+}
+
+export interface CreateSessionInput {
+  readonly agentId: string;
+  /** Requested canonical key. Stable OpenClaw adopts an existing entry with the same key. */
+  readonly sessionKey: string;
+  readonly parentSessionKey?: string;
+  readonly label?: string;
+  readonly timeoutMs?: number;
+}
+
+export interface OpenClawSessionCreateResult {
+  readonly key: string;
+  readonly sessionId: string;
+  readonly raw: Readonly<Record<string, unknown>>;
+}
+
+export interface ExportSessionHistoryInput {
+  readonly agentId: string;
+  readonly sessionKey: string;
+  readonly limit?: number;
+  readonly maxChars?: number;
+  readonly timeoutMs?: number;
+}
+
+export interface OpenClawSessionHistoryExport {
+  readonly key: string;
+  readonly sessionId: string;
+  readonly messageCount: number;
+  /** Canonical-key JSONL, one stored message per line. */
+  readonly transcript: string;
+  readonly raw: Readonly<Record<string, unknown>>;
+}
+
 export interface OpenClawAgentRunResult {
   readonly runId: string | null;
   readonly status: string | null;
@@ -140,6 +178,9 @@ export interface OpenClawAdapter {
   verifyStableVersion(): Promise<ParsedOpenClawVersion>;
   ensureProfile(spec: OpenClawAgentProfileSpec): Promise<ObservedOpenClawProfile>;
   deactivateProfile(agentId: string): Promise<void>;
+  archiveSession(input: ArchiveSessionInput): Promise<void>;
+  createSession(input: CreateSessionInput): Promise<OpenClawSessionCreateResult>;
+  exportSessionHistory(input: ExportSessionHistoryInput): Promise<OpenClawSessionHistoryExport>;
   inspectProfile(agentId: string): Promise<ObservedOpenClawProfile | null>;
   dispatchToAgent(input: DispatchToAgentInput): Promise<OpenClawAgentRunResult>;
   spawnTaskAgent(input: SpawnTaskAgentInput): Promise<OpenClawAgentRunResult>;

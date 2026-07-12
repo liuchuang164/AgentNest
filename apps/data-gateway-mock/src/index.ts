@@ -164,6 +164,34 @@ export interface GatewayClock {
   now(): Date;
 }
 
+export interface DataGatewayToolExecutionIdentity {
+  readonly scope: {
+    readonly tenantId: string;
+    readonly bizDomain: string;
+  };
+  readonly logicalAgentId: string;
+  readonly runtimeInstanceId: string;
+  readonly sessionId: string;
+  readonly taskId: string;
+  readonly toolName: string;
+  readonly action: string;
+  readonly resourceType: string;
+  readonly resourceId: string;
+}
+
+export interface DataGatewayToolOnceResult {
+  readonly result: Readonly<Record<string, unknown>>;
+  readonly executed: boolean;
+}
+
+/** Minimal port implemented by the control-plane DemoToolOnceGuard. */
+export interface DataGatewayToolOnceGuard {
+  execute(
+    identity: DataGatewayToolExecutionIdentity,
+    operation: () => Promise<Readonly<Record<string, unknown>>>,
+  ): Promise<DataGatewayToolOnceResult>;
+}
+
 export interface DataGatewayResponse {
   readonly success: boolean;
   readonly code: string;
@@ -354,6 +382,7 @@ export interface DataGatewayApplicationOptions {
   readonly traceSink: GatewayTraceSink;
   readonly fixtures: InMemoryDataGatewayFixtures;
   readonly clock: GatewayClock;
+  readonly toolOnceGuard: DataGatewayToolOnceGuard;
 }
 
 interface ToolDefinition {
@@ -430,12 +459,14 @@ export class DataGatewayApplication {
   readonly #traceSink: GatewayTraceSink;
   readonly #fixtures: InMemoryDataGatewayFixtures;
   readonly #clock: GatewayClock;
+  readonly #toolOnceGuard: DataGatewayToolOnceGuard;
 
   public constructor(options: DataGatewayApplicationOptions) {
     this.#contextLookup = options.contextLookup;
     this.#traceSink = options.traceSink;
     this.#fixtures = options.fixtures;
     this.#clock = options.clock;
+    this.#toolOnceGuard = options.toolOnceGuard;
   }
 
   public async execute(untrustedInput: unknown): Promise<DataGatewayResponse> {
@@ -492,15 +523,20 @@ export class DataGatewayApplication {
       return this.#deny(request, context, GatewayDenyReason.INVALID_TOOL_PARAMS, untrustedInput);
     }
 
-    const data = this.#executeTool(context, request);
-    await this.#trace(request, context, GatewayDecision.ALLOW, "TOOL_EXECUTED");
+    const toolResult = await this.#executeTool(context, request, definition);
+    await this.#trace(
+      request,
+      context,
+      GatewayDecision.ALLOW,
+      toolResult.executed ? "TOOL_EXECUTED" : "TOOL_RESULT_REUSED",
+    );
     return Object.freeze({
       success: true,
       code: "OK",
       message: "tool executed",
       request_id: request.request_id,
       trace_id: request.trace_id,
-      data: Object.freeze(data),
+      data: Object.freeze(toolResult.result),
       error: null,
     });
   }
@@ -540,7 +576,38 @@ export class DataGatewayApplication {
     return false;
   }
 
-  #executeTool(
+  async #executeTool(
+    context: ExecutionContext,
+    request: DataGatewayToolRequest,
+    definition: ToolDefinition,
+  ): Promise<DataGatewayToolOnceResult> {
+    if (definition.action === "read") {
+      return {
+        result: this.#executeFixtureOperation(context, request),
+        executed: true,
+      };
+    }
+
+    return this.#toolOnceGuard.execute(
+      {
+        scope: {
+          tenantId: context.tenant_id,
+          bizDomain: context.biz_domain,
+        },
+        logicalAgentId: context.logical_agent_id,
+        runtimeInstanceId: context.runtime_instance_id,
+        sessionId: context.session_id,
+        taskId: context.task_id,
+        toolName: request.tool_name,
+        action: definition.action,
+        resourceType: definition.resourceType,
+        resourceId: request.resource.resource_id,
+      },
+      () => Promise.resolve(this.#executeFixtureOperation(context, request)),
+    );
+  }
+
+  #executeFixtureOperation(
     context: ExecutionContext,
     request: DataGatewayToolRequest,
   ): Readonly<Record<string, unknown>> {

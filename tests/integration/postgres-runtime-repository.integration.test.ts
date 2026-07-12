@@ -5,6 +5,7 @@ import {
   type PostgresPool,
   type SqlQueryResult,
 } from "@agentnest/persistence";
+import { L1RuntimeStatus } from "@agentnest/contracts";
 import { describe, expect, it } from "vitest";
 
 function requiredValue(values: readonly unknown[] | undefined, index: number): unknown {
@@ -28,6 +29,14 @@ class RecordingPostgresClient implements PostgresClient {
   public releaseCount = 0;
   #logical: Record<string, unknown> | null = null;
   #runtime: Record<string, unknown> | null = null;
+
+  public get logicalStatus(): unknown {
+    return this.#logical?.["status"];
+  }
+
+  public get runtimeStatus(): unknown {
+    return this.#runtime?.["status"];
+  }
 
   public query<TRow extends Record<string, unknown>>(
     text: string,
@@ -93,16 +102,35 @@ class RecordingPostgresClient implements PostgresClient {
         restored_from_runtime_instance_id: values?.[4] ?? null,
       };
       rows = [this.#runtime];
+    } else if (text.includes("UPDATE agent_runtime_instance AS runtime")) {
+      if (
+        this.#runtime !== null &&
+        this.#logical !== null &&
+        this.#logical["tenant_id"] === requiredString(values, 0) &&
+        this.#logical["biz_domain"] === requiredString(values, 1) &&
+        this.#runtime["logical_agent_id"] === requiredString(values, 2) &&
+        this.#runtime["runtime_instance_id"] === requiredString(values, 3)
+      ) {
+        this.#runtime["status"] = requiredString(values, 4);
+        this.#runtime["last_active_at"] = requiredValue(values, 5);
+        rows = [{ runtime_instance_id: this.#runtime["runtime_instance_id"] }];
+      }
     } else if (text.includes("UPDATE tenant_biz_agent")) {
       if (this.#logical === null) {
         throw new Error("logical agent must exist before update");
       }
-      this.#logical = {
-        ...this.#logical,
-        current_runtime_instance_id: requiredString(values, 1),
-        last_active_at: requiredValue(values, 2),
-      };
-      rows = [this.#logical];
+      if (text.includes("SET status = $5")) {
+        this.#logical["status"] = requiredString(values, 4);
+        this.#logical["last_active_at"] = requiredValue(values, 5);
+        rows = [{ logical_agent_id: this.#logical["logical_agent_id"] }];
+      } else {
+        this.#logical = {
+          ...this.#logical,
+          current_runtime_instance_id: requiredString(values, 1),
+          last_active_at: requiredValue(values, 2),
+        };
+        rows = [this.#logical];
+      }
     }
     return Promise.resolve({ rows: rows as readonly TRow[], rowCount: rows.length });
   }
@@ -170,5 +198,36 @@ describe("Postgres tenant runtime repository adapter", () => {
       client.statements.filter((statement) => statement.includes("pg_advisory_xact_lock")),
     ).toHaveLength(2);
     expect(client.releaseCount).toBe(2);
+  });
+
+  it("moves the provisioned runtime and logical agent to an explicit ready state", async () => {
+    const client = new RecordingPostgresClient();
+    const repository = new PostgresTenantRuntimeRepository(new RecordingPostgresPool(client));
+    const now = new Date("2030-01-01T00:00:00.000Z");
+    await repository.ensureActiveRuntime({
+      scope: { tenantId: "tenant_A", bizDomain: "LEGAL" },
+      logicalAgentId: "tb_aaaaaaaaaaaaaaaaaaaa",
+      capabilityProfileId: "cap_tenant_a_legal_v1",
+      candidateRuntimeInstanceId: "ari_01",
+      openclawAgentId: "tb_aaaaaaaaaaaaaaaaaaaa",
+      now,
+    });
+
+    await repository.markRuntimeReady({
+      scope: { tenantId: "tenant_A", bizDomain: "LEGAL" },
+      logicalAgentId: "tb_aaaaaaaaaaaaaaaaaaaa",
+      runtimeInstanceId: "ari_01",
+      status: L1RuntimeStatus.IDLE,
+      now,
+    });
+
+    expect(client.logicalStatus).toBe(L1RuntimeStatus.IDLE);
+    expect(client.runtimeStatus).toBe(L1RuntimeStatus.IDLE);
+    const updateStatements = client.statements.filter((statement) =>
+      statement.startsWith("UPDATE"),
+    );
+    expect(updateStatements).toHaveLength(3);
+    expect(updateStatements.at(-1)).toContain("tenant_id = $1");
+    expect(updateStatements.at(-1)).toContain("biz_domain = $2");
   });
 });

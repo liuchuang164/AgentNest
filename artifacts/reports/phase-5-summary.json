@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "phase": 5,
+  "status": "PASS_LOCAL",
+  "generated_at": "2026-07-12T03:18:30Z",
+  "branch": "codex/lean-demo",
+  "base_commit": "3a9c0a941a6624c0245013e80c4556342b5be8a2",
+  "runtime": {
+    "node": "v24.15.0",
+    "pnpm": "11.11.0"
+  },
+  "openclaw": {
+    "version": "2026.6.11",
+    "channel": "stable",
+    "session_create": "PASS_LOCAL",
+    "session_history_export": "PASS_LOCAL",
+    "session_archive": "PASS_LOCAL",
+    "profile_deactivate": "PASS_LOCAL"
+  },
+  "gate": {
+    "install_frozen": "PASS",
+    "format_check": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "unit": { "status": "PASS", "files": 20, "tests": 121 },
+    "contract": { "status": "PASS", "files": 5, "tests": 19 },
+    "integration": {
+      "status": "PASS_LOCAL",
+      "files": 5,
+      "tests": 37,
+      "postgres_client": "recording"
+    },
+    "isolation": { "status": "PASS", "files": 1, "tests": 16 },
+    "lifecycle": { "status": "PASS", "files": 3, "tests": 19 },
+    "plugin_build": "PASS",
+    "plugin_dist_import": "PASS",
+    "secret_scan": "PASS",
+    "diff_check": "PASS"
+  },
+  "lifecycle": {
+    "l1_ttl_seconds": 86400,
+    "l2_ttl_seconds": 3600,
+    "exact_boundary": "PASS",
+    "active_child_blocks_l1": "PASS",
+    "checkpoint_failure_blocks_unload": "PASS"
+  },
+  "restore": {
+    "logical_id_stable": "PASS",
+    "runtime_id_changes": "PASS",
+    "session_id_changes": "PASS_LOCAL",
+    "restored_from_recorded": "PASS",
+    "summary_memory_trace_task_state": "PASS",
+    "full_transcript_not_injected": "PASS",
+    "current_policy_re_resolved": "PASS",
+    "completed_tool_write_reused": "PASS"
+  },
+  "deferred_to_phase_6": [
+    "real PostgreSQL 16 migration and transaction execution",
+    "remote composed AgentNest services",
+    "Control Plane and OpenClaw restart recovery",
+    "real native sessions_spawn continuation after restore",
+    "real OpenClaw model-to-Mock-Tool chain"
+  ],
+  "external_blocker": {
+    "provider": "qwen",
+    "code": "Arrearage",
+    "affects_phase_5_local_gate": false,
+    "affects_final_acceptance": true
+  }
+}

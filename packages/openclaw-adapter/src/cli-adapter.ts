@@ -6,7 +6,10 @@ import {
   OpenClawProfileValidationError,
 } from "./errors.js";
 import type {
+  ArchiveSessionInput,
+  CreateSessionInput,
   DispatchToAgentInput,
+  ExportSessionHistoryInput,
   ObservedOpenClawProfile,
   ObservedOpenClawSandboxPolicy,
   ObservedOpenClawSubagentPolicy,
@@ -22,6 +25,8 @@ import type {
   OpenClawModelSpec,
   OpenClawSandboxMode,
   OpenClawSandboxScope,
+  OpenClawSessionCreateResult,
+  OpenClawSessionHistoryExport,
   OpenClawToolProfile,
   OpenClawWorkspaceAccess,
   ParsedOpenClawVersion,
@@ -421,6 +426,27 @@ function extractResultString(record: JsonRecord, key: string): string | null {
   return typeof nested === "string" ? nested : null;
 }
 
+function canonicalJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalJsonValue(item));
+  }
+  if (isRecord(value)) {
+    const result: JsonRecord = {};
+    for (const key of Object.keys(value).sort()) {
+      result[key] = canonicalJsonValue(value[key]);
+    }
+    return result;
+  }
+  return value;
+}
+
+function messagesToCanonicalJsonLines(messages: readonly unknown[]): string {
+  if (messages.length === 0) {
+    return "";
+  }
+  return `${messages.map((message) => JSON.stringify(canonicalJsonValue(message))).join("\n")}\n`;
+}
+
 export class OpenClawCliAdapter implements OpenClawAdapter {
   readonly #runner: OpenClawCommandRunner;
   readonly #executable: string;
@@ -534,6 +560,189 @@ export class OpenClawCliAdapter implements OpenClawAdapter {
     if (observed.some((candidate) => candidate["id"] === agentId)) {
       throw new OpenClawObservedStateError(agentId, ["id"]);
     }
+  }
+
+  /**
+   * Removes an L2 session entry through the stable Gateway RPC and asks OpenClaw
+   * to archive its transcript. A missing entry is an idempotent success because
+   * `sessions.delete` returns `{ deleted: false }` for that case.
+   */
+  public async archiveSession(input: ArchiveSessionInput): Promise<void> {
+    this.#agentIdFromCanonicalSessionKey(input.sessionKey);
+    const commandTimeoutMs = input.timeoutMs ?? this.#gatewayCallTimeoutMs;
+    if (!Number.isSafeInteger(commandTimeoutMs) || commandTimeoutMs <= 0) {
+      throw new OpenClawProfileValidationError("timeoutMs must be a positive integer");
+    }
+
+    await this.verifyStableVersion();
+    const result = await this.#run(
+      [
+        "gateway",
+        "call",
+        "sessions.delete",
+        "--params",
+        JSON.stringify({
+          key: input.sessionKey,
+          deleteTranscript: true,
+        }),
+        "--json",
+        "--timeout",
+        String(commandTimeoutMs),
+      ],
+      `openclaw gateway call sessions.delete for ${input.sessionKey}`,
+      commandTimeoutMs,
+    );
+    const parsed = parseJson(result.stdout, "openclaw gateway call sessions.delete");
+    if (!isRecord(parsed)) {
+      throw new OpenClawProfileValidationError(
+        "openclaw gateway call sessions.delete must return a JSON object",
+      );
+    }
+    const response = extractNestedRecord(parsed, "result") ?? parsed;
+    if (
+      response["ok"] !== true ||
+      response["key"] !== input.sessionKey ||
+      typeof response["deleted"] !== "boolean" ||
+      !Array.isArray(response["archived"]) ||
+      !response["archived"].every((value) => typeof value === "string")
+    ) {
+      throw new OpenClawProfileValidationError(
+        "openclaw gateway call sessions.delete returned an invalid result",
+      );
+    }
+  }
+
+  /**
+   * Creates or adopts a named session through the stable `sessions.create` RPC.
+   * Supplying neither `task` nor `message` guarantees this operation does not
+   * start a model run. Stable OpenClaw preserves the sessionId when the exact
+   * key already exists, making retries idempotent.
+   */
+  public async createSession(input: CreateSessionInput): Promise<OpenClawSessionCreateResult> {
+    assertAgentId(input.agentId);
+    this.#assertSessionBelongsToAgent(input.agentId, input.sessionKey);
+    if (input.parentSessionKey !== undefined) {
+      this.#agentIdFromCanonicalSessionKey(input.parentSessionKey);
+    }
+    if (input.label !== undefined) {
+      assertNonEmpty(input.label, "label");
+      if (input.label.length > 512) {
+        throw new OpenClawProfileValidationError("label must not exceed 512 characters");
+      }
+    }
+    const commandTimeoutMs = input.timeoutMs ?? this.#gatewayCallTimeoutMs;
+    if (!Number.isSafeInteger(commandTimeoutMs) || commandTimeoutMs <= 0) {
+      throw new OpenClawProfileValidationError("timeoutMs must be a positive integer");
+    }
+
+    await this.verifyStableVersion();
+    const params: JsonRecord = {
+      key: input.sessionKey,
+      agentId: input.agentId,
+      ...(input.parentSessionKey === undefined ? {} : { parentSessionKey: input.parentSessionKey }),
+      ...(input.label === undefined ? {} : { label: input.label }),
+    };
+    const result = await this.#run(
+      [
+        "gateway",
+        "call",
+        "sessions.create",
+        "--params",
+        JSON.stringify(params),
+        "--json",
+        "--timeout",
+        String(commandTimeoutMs),
+      ],
+      `openclaw gateway call sessions.create for ${input.sessionKey}`,
+      commandTimeoutMs,
+    );
+    const parsed = parseJson(result.stdout, "openclaw gateway call sessions.create");
+    if (!isRecord(parsed)) {
+      throw new OpenClawProfileValidationError(
+        "openclaw gateway call sessions.create must return a JSON object",
+      );
+    }
+    const response = extractNestedRecord(parsed, "result") ?? parsed;
+    if (
+      response["ok"] !== true ||
+      response["key"] !== input.sessionKey ||
+      typeof response["sessionId"] !== "string" ||
+      response["sessionId"].trim().length === 0 ||
+      response["runStarted"] !== false
+    ) {
+      throw new OpenClawProfileValidationError(
+        "openclaw gateway call sessions.create returned an invalid result",
+      );
+    }
+    return {
+      key: response["key"],
+      sessionId: response["sessionId"],
+      raw: parsed,
+    };
+  }
+
+  /** Reads stored history through Gateway RPC without dispatching a model run. */
+  public async exportSessionHistory(
+    input: ExportSessionHistoryInput,
+  ): Promise<OpenClawSessionHistoryExport> {
+    assertAgentId(input.agentId);
+    this.#assertSessionBelongsToAgent(input.agentId, input.sessionKey);
+    const limit = input.limit ?? 1_000;
+    const maxChars = input.maxChars ?? 500_000;
+    const commandTimeoutMs = input.timeoutMs ?? this.#gatewayCallTimeoutMs;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
+      throw new OpenClawProfileValidationError("limit must be an integer from 1 through 1000");
+    }
+    if (!Number.isSafeInteger(maxChars) || maxChars < 1 || maxChars > 500_000) {
+      throw new OpenClawProfileValidationError("maxChars must be an integer from 1 through 500000");
+    }
+    if (!Number.isSafeInteger(commandTimeoutMs) || commandTimeoutMs <= 0) {
+      throw new OpenClawProfileValidationError("timeoutMs must be a positive integer");
+    }
+
+    await this.verifyStableVersion();
+    const result = await this.#run(
+      [
+        "gateway",
+        "call",
+        "chat.history",
+        "--params",
+        JSON.stringify({
+          sessionKey: input.sessionKey,
+          limit,
+          maxChars,
+        }),
+        "--json",
+        "--timeout",
+        String(commandTimeoutMs),
+      ],
+      `openclaw gateway call chat.history for ${input.sessionKey}`,
+      commandTimeoutMs,
+    );
+    const parsed = parseJson(result.stdout, "openclaw gateway call chat.history");
+    if (!isRecord(parsed)) {
+      throw new OpenClawProfileValidationError(
+        "openclaw gateway call chat.history must return a JSON object",
+      );
+    }
+    const response = extractNestedRecord(parsed, "result") ?? parsed;
+    if (
+      response["sessionKey"] !== input.sessionKey ||
+      typeof response["sessionId"] !== "string" ||
+      response["sessionId"].trim().length === 0 ||
+      !Array.isArray(response["messages"])
+    ) {
+      throw new OpenClawProfileValidationError(
+        "openclaw gateway call chat.history returned an invalid result",
+      );
+    }
+    return {
+      key: input.sessionKey,
+      sessionId: response["sessionId"],
+      messageCount: response["messages"].length,
+      transcript: messagesToCanonicalJsonLines(response["messages"]),
+      raw: parsed,
+    };
   }
 
   public async dispatchToAgent(input: DispatchToAgentInput): Promise<OpenClawAgentRunResult> {
@@ -690,10 +899,24 @@ export class OpenClawCliAdapter implements OpenClawAdapter {
   }
 
   #assertSessionBelongsToAgent(agentId: string, sessionKey: string): void {
-    assertNonEmpty(sessionKey, "sessionKey");
-    if (!sessionKey.startsWith(`agent:${agentId}:`)) {
+    const sessionAgentId = this.#agentIdFromCanonicalSessionKey(sessionKey);
+    if (sessionAgentId !== agentId) {
       throw new OpenClawProfileValidationError(`sessionKey must be scoped to agent ${agentId}`);
     }
+  }
+
+  #agentIdFromCanonicalSessionKey(sessionKey: string): string {
+    assertNonEmpty(sessionKey, "sessionKey");
+    const match = /^agent:([^:]+):(.+)$/u.exec(sessionKey);
+    const agentId = match?.[1];
+    const sessionName = match?.[2];
+    if (agentId === undefined || sessionName === undefined || sessionName.trim().length === 0) {
+      throw new OpenClawProfileValidationError(
+        "sessionKey must be a canonical OpenClaw agent session key",
+      );
+    }
+    assertAgentId(agentId);
+    return agentId;
   }
 
   async #dispatchToAgent(input: DispatchToAgentInput): Promise<OpenClawAgentRunResult> {

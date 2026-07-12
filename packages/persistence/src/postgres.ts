@@ -1,11 +1,13 @@
+import { normalizeTenantBizScope } from "@agentnest/capability";
 import { L1RuntimeStatus } from "@agentnest/contracts";
 
 import type {
   EnsureActiveRuntimeInput,
   EnsureActiveRuntimeResult,
   LogicalAgentRecord,
+  MarkRuntimeReadyInput,
   RuntimeInstanceRecord,
-  TenantRuntimeRepository,
+  TenantRuntimeLifecycleRepository,
 } from "./runtime-repository.js";
 
 export interface SqlQueryResult<TRow extends Record<string, unknown>> {
@@ -96,7 +98,7 @@ function firstRow<TRow extends Record<string, unknown>>(
   return row;
 }
 
-export class PostgresTenantRuntimeRepository implements TenantRuntimeRepository {
+export class PostgresTenantRuntimeRepository implements TenantRuntimeLifecycleRepository {
   public constructor(private readonly pool: PostgresPool) {}
 
   public async ensureActiveRuntime(
@@ -181,6 +183,75 @@ export class PostgresTenantRuntimeRepository implements TenantRuntimeRepository 
         runtime,
         reused: false,
       };
+    } catch (error: unknown) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        // Preserve the original transaction error.
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async markRuntimeReady(input: MarkRuntimeReadyInput): Promise<void> {
+    const scope = normalizeTenantBizScope(input.scope);
+    if (![L1RuntimeStatus.ACTIVE, L1RuntimeStatus.IDLE].includes(input.status)) {
+      throw new TypeError("ready runtime status must be ACTIVE or IDLE");
+    }
+    if (!(input.now instanceof Date) || Number.isNaN(input.now.getTime())) {
+      throw new TypeError("now must be a valid Date");
+    }
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const runtimeResult = await client.query<Record<string, unknown>>(
+        `UPDATE agent_runtime_instance AS runtime
+            SET status = $5,
+                last_active_at = $6,
+                failure_reason = NULL
+           FROM tenant_biz_agent AS agent
+          WHERE agent.tenant_id = $1
+            AND agent.biz_domain = $2
+            AND agent.logical_agent_id = $3
+            AND agent.current_runtime_instance_id = $4
+            AND runtime.logical_agent_id = agent.logical_agent_id
+            AND runtime.runtime_instance_id = $4
+            AND runtime.status IN ('PROVISIONING', 'ACTIVE', 'IDLE')
+        RETURNING runtime.runtime_instance_id`,
+        [
+          scope.tenantId,
+          scope.bizDomain,
+          input.logicalAgentId,
+          input.runtimeInstanceId,
+          input.status,
+          input.now,
+        ],
+      );
+      firstRow(runtimeResult, "the ready runtime instance");
+      const logicalResult = await client.query<Record<string, unknown>>(
+        `UPDATE tenant_biz_agent
+            SET status = $5,
+                last_active_at = $6,
+                updated_at = $6
+          WHERE tenant_id = $1
+            AND biz_domain = $2
+            AND logical_agent_id = $3
+            AND current_runtime_instance_id = $4
+            AND status IN ('PROVISIONING', 'ACTIVE', 'IDLE')
+        RETURNING logical_agent_id`,
+        [
+          scope.tenantId,
+          scope.bizDomain,
+          input.logicalAgentId,
+          input.runtimeInstanceId,
+          input.status,
+          input.now,
+        ],
+      );
+      firstRow(logicalResult, "the ready logical agent");
+      await client.query("COMMIT");
     } catch (error: unknown) {
       try {
         await client.query("ROLLBACK");

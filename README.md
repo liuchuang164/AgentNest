@@ -15,7 +15,7 @@ AgentNest 是一个基于 **OpenClaw 官方最新稳定版**的三层多租户 A
 
 ## 当前实现状态
 
-Phase 2 的精简 Tenant Capability Profile、任务能力交集和 PostgreSQL Runtime Registry 已落地。Phase 3 已在远端安装并启动 OpenClaw stable `2026.6.11 (e085fa1)`，配置并观察到固定 L0、3 个 L1 和 3 个 L2 的独立 Profile、workspace、agentDir 与 Skill/Tool allowlist。Phase 4 已实现 PostgreSQL `execution_context`、原生 OpenClaw Tenant Runtime Plugin、Data/External Gateway Mock 和 6 个确定性 Tool；本地隔离测试证明跨业务、跨租户、action、resource、未知/过期 context 均被拒绝且无副作用，并写入可关联 `DENY` Trace。真实三层模型链路仍被百炼 `400 Arrearage` 账号账务状态阻断，尚不得宣称 Demo 完成。证据见 [`artifacts/reports/phase-3-summary.md`](artifacts/reports/phase-3-summary.md) 和 [`artifacts/reports/phase-4-summary.md`](artifacts/reports/phase-4-summary.md)。
+Phase 2 的精简 Tenant Capability Profile、任务能力交集和 PostgreSQL Runtime Registry 已落地。Phase 3 已在远端安装并启动 OpenClaw stable `2026.6.11 (e085fa1)`，配置并观察到固定 L0、3 个 L1 和 3 个 L2 的独立 Profile、workspace、agentDir 与 Skill/Tool allowlist。Phase 4 已实现 PostgreSQL `execution_context`、原生 OpenClaw Tenant Runtime Plugin、Data/External Gateway Mock 和 6 个确定性 Tool；本地隔离测试证明跨业务、跨租户、action、resource、未知/过期 context 均被拒绝且无副作用，并写入可关联 `DENY` Trace。Phase 5 已实现 PostgreSQL Task/Memory/Summary/Trace/Checkpoint Store、本地持久化 volume、1h/24h fake-clock Reaper、恢复和 Tool write-once，并接入 stable Gateway 的 Session create/history/archive 与 L1 Profile 停用；本地 Gate 为 `PASS_LOCAL`。真实 PostgreSQL 16、远端服务装配、重启恢复和三层模型链路仍属于 Phase 6，其中模型调用当前受百炼 `400 Arrearage` 账号账务状态阻断，尚不得宣称 Demo 完成。证据见 [`artifacts/reports/phase-3-summary.md`](artifacts/reports/phase-3-summary.md)、[`artifacts/reports/phase-4-summary.md`](artifacts/reports/phase-4-summary.md) 和 [`artifacts/reports/phase-5-summary.md`](artifacts/reports/phase-5-summary.md)。
 
 ## OpenClaw 基线
 

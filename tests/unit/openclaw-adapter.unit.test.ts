@@ -406,3 +406,297 @@ describe("OpenClawCliAdapter gateway dispatch", () => {
     runner.expectComplete();
   });
 });
+
+describe("OpenClawCliAdapter session archive", () => {
+  const sessionKey = `agent:${LEGAL_L2_AGENT_ID}:subagent_task_01`;
+
+  it("uses stable sessions.delete with transcript archival and the canonical agent scope", async () => {
+    const runner = new ScriptedRunner(
+      success("OpenClaw 2026.6.11 (e085fa1)"),
+      success(
+        JSON.stringify({
+          ok: true,
+          key: sessionKey,
+          deleted: true,
+          archived: ["session.jsonl.deleted.2030-01-01T00-00-00.000Z"],
+        }),
+      ),
+    );
+    const adapter = new OpenClawCliAdapter(runner);
+
+    await adapter.archiveSession({ sessionKey, timeoutMs: 30_000 });
+
+    expect(runner.calls[1]?.args.slice(0, 4)).toEqual([
+      "gateway",
+      "call",
+      "sessions.delete",
+      "--params",
+    ]);
+    const serializedParams = runner.calls[1]?.args[4];
+    if (serializedParams === undefined) {
+      throw new Error("sessions.delete params argument was not recorded");
+    }
+    expect(JSON.parse(serializedParams)).toEqual({
+      key: sessionKey,
+      deleteTranscript: true,
+    });
+    expect(runner.calls[1]?.args.slice(-2)).toEqual(["--timeout", "30000"]);
+    expect(runner.calls[1]?.args).toContain("--json");
+    expect(runner.calls[1]?.timeoutMs).toBe(30_000);
+    runner.expectComplete();
+  });
+
+  it("treats an already absent session as an idempotent successful archive", async () => {
+    const runner = new ScriptedRunner(
+      success("OpenClaw 2026.6.11 (e085fa1)"),
+      success(JSON.stringify({ ok: true, key: sessionKey, deleted: false, archived: [] })),
+    );
+    const adapter = new OpenClawCliAdapter(runner);
+
+    await expect(adapter.archiveSession({ sessionKey })).resolves.toBeUndefined();
+
+    runner.expectComplete();
+  });
+
+  it.each(["main", "global", "agent:BAD:session", `agent:${LEGAL_L2_AGENT_ID}:`])(
+    "rejects a non-canonical or unsupported session key before invoking OpenClaw: %s",
+    async (invalidSessionKey) => {
+      const runner = new ScriptedRunner();
+      const adapter = new OpenClawCliAdapter(runner);
+
+      await expect(
+        adapter.archiveSession({ sessionKey: invalidSessionKey }),
+      ).rejects.toBeInstanceOf(OpenClawProfileValidationError);
+      expect(runner.calls).toHaveLength(0);
+    },
+  );
+
+  it("fails closed when sessions.delete returns an invalid acknowledgement", async () => {
+    const runner = new ScriptedRunner(
+      success("OpenClaw 2026.6.11 (e085fa1)"),
+      success(JSON.stringify({ ok: true, key: sessionKey, deleted: true })),
+    );
+    const adapter = new OpenClawCliAdapter(runner);
+
+    await expect(adapter.archiveSession({ sessionKey })).rejects.toThrow(
+      "sessions.delete returned an invalid result",
+    );
+    runner.expectComplete();
+  });
+});
+
+describe("OpenClawCliAdapter named session creation", () => {
+  const sessionKey = `agent:${LEGAL_AGENT_ID}:restore_parent_01`;
+  const parentSessionKey = `agent:${LEGAL_AGENT_ID}:previous_parent`;
+
+  it("creates a canonical session without sending a model message", async () => {
+    const runner = new ScriptedRunner(
+      success("OpenClaw 2026.6.11 (e085fa1)"),
+      success(
+        JSON.stringify({
+          ok: true,
+          key: sessionKey,
+          sessionId: "oc_session_01",
+          entry: { sessionId: "oc_session_01" },
+          runStarted: false,
+        }),
+      ),
+    );
+    const adapter = new OpenClawCliAdapter(runner);
+
+    const created = await adapter.createSession({
+      agentId: LEGAL_AGENT_ID,
+      sessionKey,
+      parentSessionKey,
+      label: "restored legal parent",
+      timeoutMs: 25_000,
+    });
+
+    expect(created).toMatchObject({ key: sessionKey, sessionId: "oc_session_01" });
+    expect(runner.calls[1]?.args.slice(0, 4)).toEqual([
+      "gateway",
+      "call",
+      "sessions.create",
+      "--params",
+    ]);
+    const serializedParams = runner.calls[1]?.args[4];
+    if (serializedParams === undefined) {
+      throw new Error("sessions.create params argument was not recorded");
+    }
+    const params = JSON.parse(serializedParams) as Record<string, unknown>;
+    expect(params).toEqual({
+      key: sessionKey,
+      agentId: LEGAL_AGENT_ID,
+      parentSessionKey,
+      label: "restored legal parent",
+    });
+    expect(params).not.toHaveProperty("message");
+    expect(params).not.toHaveProperty("task");
+    expect(runner.calls[1]?.args.slice(-2)).toEqual(["--timeout", "25000"]);
+    expect(runner.calls[1]?.timeoutMs).toBe(25_000);
+    runner.expectComplete();
+  });
+
+  it("adopts the same stable session key and sessionId on a retry", async () => {
+    const acknowledgement = JSON.stringify({
+      ok: true,
+      key: sessionKey,
+      sessionId: "oc_session_existing",
+      entry: { sessionId: "oc_session_existing" },
+      runStarted: false,
+    });
+    const runner = new ScriptedRunner(
+      success("OpenClaw 2026.6.11 (e085fa1)"),
+      success(acknowledgement),
+      success("OpenClaw 2026.6.11 (e085fa1)"),
+      success(acknowledgement),
+    );
+    const adapter = new OpenClawCliAdapter(runner);
+
+    const first = await adapter.createSession({ agentId: LEGAL_AGENT_ID, sessionKey });
+    const retried = await adapter.createSession({ agentId: LEGAL_AGENT_ID, sessionKey });
+
+    expect(first.sessionId).toBe("oc_session_existing");
+    expect(retried).toMatchObject({ key: sessionKey, sessionId: first.sessionId });
+    expect(runner.calls.filter((call) => call.args.includes("sessions.create"))).toHaveLength(2);
+    runner.expectComplete();
+  });
+
+  it.each([
+    { agentId: LEGAL_AGENT_ID, sessionKey: "restore_parent_01" },
+    { agentId: LEGAL_AGENT_ID, sessionKey: "agent:tb_other:restore_parent_01" },
+    {
+      agentId: LEGAL_AGENT_ID,
+      sessionKey,
+      parentSessionKey: "previous_parent",
+    },
+  ])("rejects an unscoped or mismatched session request before OpenClaw", async (input) => {
+    const runner = new ScriptedRunner();
+    const adapter = new OpenClawCliAdapter(runner);
+
+    await expect(adapter.createSession(input)).rejects.toBeInstanceOf(
+      OpenClawProfileValidationError,
+    );
+    expect(runner.calls).toHaveLength(0);
+  });
+
+  it("rejects an acknowledgement that started a model run", async () => {
+    const runner = new ScriptedRunner(
+      success("OpenClaw 2026.6.11 (e085fa1)"),
+      success(
+        JSON.stringify({
+          ok: true,
+          key: sessionKey,
+          sessionId: "oc_session_01",
+          runStarted: true,
+        }),
+      ),
+    );
+    const adapter = new OpenClawCliAdapter(runner);
+
+    await expect(adapter.createSession({ agentId: LEGAL_AGENT_ID, sessionKey })).rejects.toThrow(
+      "sessions.create returned an invalid result",
+    );
+    runner.expectComplete();
+  });
+});
+
+describe("OpenClawCliAdapter session history export", () => {
+  const sessionKey = `agent:${LEGAL_AGENT_ID}:checkpoint_parent_01`;
+
+  it("exports stored messages as deterministic canonical JSONL without a model call", async () => {
+    const runner = new ScriptedRunner(
+      success("OpenClaw 2026.6.11 (e085fa1)"),
+      success(
+        '{"sessionKey":"agent:tb_0123456789abcdef0123:checkpoint_parent_01",' +
+          '"sessionId":"oc_session_01","messages":[' +
+          '{"z":1,"role":"user","content":[{"type":"text","text":"hello"}]},' +
+          '{"role":"assistant","a":2}]}',
+      ),
+    );
+    const adapter = new OpenClawCliAdapter(runner);
+
+    const exported = await adapter.exportSessionHistory({
+      agentId: LEGAL_AGENT_ID,
+      sessionKey,
+      limit: 40,
+      maxChars: 12_000,
+      timeoutMs: 20_000,
+    });
+
+    expect(exported).toMatchObject({
+      key: sessionKey,
+      sessionId: "oc_session_01",
+      messageCount: 2,
+    });
+    expect(exported.transcript).toBe(
+      '{"content":[{"text":"hello","type":"text"}],"role":"user","z":1}\n' +
+        '{"a":2,"role":"assistant"}\n',
+    );
+    expect(runner.calls[1]?.args.slice(0, 4)).toEqual([
+      "gateway",
+      "call",
+      "chat.history",
+      "--params",
+    ]);
+    const serializedParams = runner.calls[1]?.args[4];
+    if (serializedParams === undefined) {
+      throw new Error("chat.history params argument was not recorded");
+    }
+    const params = JSON.parse(serializedParams) as Record<string, unknown>;
+    expect(params).toEqual({
+      sessionKey,
+      limit: 40,
+      maxChars: 12_000,
+    });
+    expect(params).not.toHaveProperty("message");
+    expect(runner.calls[1]?.args.slice(-2)).toEqual(["--timeout", "20000"]);
+    expect(runner.calls[1]?.timeoutMs).toBe(20_000);
+    runner.expectComplete();
+  });
+
+  it("uses the stable RPC maximums by default and supports an empty stored history", async () => {
+    const runner = new ScriptedRunner(
+      success("OpenClaw 2026.6.11 (e085fa1)"),
+      success(JSON.stringify({ sessionKey, sessionId: "oc_session_empty", messages: [] })),
+    );
+    const adapter = new OpenClawCliAdapter(runner);
+
+    const exported = await adapter.exportSessionHistory({
+      agentId: LEGAL_AGENT_ID,
+      sessionKey,
+    });
+
+    expect(exported.transcript).toBe("");
+    expect(exported.messageCount).toBe(0);
+    const serializedParams = runner.calls[1]?.args[4];
+    if (serializedParams === undefined) {
+      throw new Error("chat.history params argument was not recorded");
+    }
+    expect(JSON.parse(serializedParams)).toMatchObject({ limit: 1_000, maxChars: 500_000 });
+    runner.expectComplete();
+  });
+
+  it("rejects an unknown history and invalid bounds instead of checkpointing partial identity", async () => {
+    const invalidBoundsRunner = new ScriptedRunner();
+    const invalidBoundsAdapter = new OpenClawCliAdapter(invalidBoundsRunner);
+    await expect(
+      invalidBoundsAdapter.exportSessionHistory({
+        agentId: LEGAL_AGENT_ID,
+        sessionKey,
+        limit: 1_001,
+      }),
+    ).rejects.toBeInstanceOf(OpenClawProfileValidationError);
+    expect(invalidBoundsRunner.calls).toHaveLength(0);
+
+    const missingRunner = new ScriptedRunner(
+      success("OpenClaw 2026.6.11 (e085fa1)"),
+      success(JSON.stringify({ sessionKey, messages: [] })),
+    );
+    const missingAdapter = new OpenClawCliAdapter(missingRunner);
+    await expect(
+      missingAdapter.exportSessionHistory({ agentId: LEGAL_AGENT_ID, sessionKey }),
+    ).rejects.toThrow("chat.history returned an invalid result");
+    missingRunner.expectComplete();
+  });
+});

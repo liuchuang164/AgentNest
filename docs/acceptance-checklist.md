@@ -8,8 +8,8 @@
 - [x] `pnpm install --frozen-lockfile` 成功。证据：`artifacts/reports/phase-2-summary.md`
 - [x] lint 成功。证据：`artifacts/reports/phase-2-summary.md`
 - [x] TypeScript strict typecheck 成功。证据：`artifacts/reports/phase-2-summary.md`
-- [x] Unit tests 成功。证据：`artifacts/reports/phase-2-summary.md`（32/32）
-- [x] Contract tests 成功。证据：`artifacts/reports/phase-2-summary.md`（13/13）
+- [x] Unit tests 成功。证据：`artifacts/reports/phase-5-summary.md`（121/121）
+- [x] Contract tests 成功。证据：`artifacts/reports/phase-5-summary.md`（19/19）
 - [ ] 真实 PostgreSQL/Gateway Integration tests 成功。Phase 2 adapter integration 2/2 已通过，真实 PostgreSQL 证据待远端阶段补齐：`artifacts/reports/phase-2-summary.md`
 - [x] Secret scan 成功。证据：`artifacts/reports/phase-2-summary.md`
 - [x] OpenAPI 3.1 文件生成并校验。证据：`openapi/agentnest.openapi.json`、`artifacts/reports/phase-2-summary.md`
@@ -68,32 +68,32 @@
 
 ## H. Memory 隔离
 
-- [ ] tenant_A/LEGAL 只读取 `ALPHA_LEGAL_MEMORY`。证据：
-- [ ] tenant_A/ROBOT_DOG 只读取 `ALPHA_ROBOT_MEMORY`。证据：
-- [ ] tenant_B/LEGAL 只读取 `BETA_LEGAL_MEMORY`。证据：
-- [ ] 同租户跨业务无泄漏。证据：
-- [ ] 跨租户无泄漏。证据：
-- [ ] 恢复只加载当前 tenant/biz 的 Memory 与 Summary。证据：
+- [x] tenant_A/LEGAL 只读取 `ALPHA_LEGAL_MEMORY`。证据：`postgres-phase5-persistence-repository.integration.test.ts`、`artifacts/reports/phase-5-summary.md`
+- [x] tenant_A/ROBOT_DOG 只读取 `ALPHA_ROBOT_MEMORY`。证据：`postgres-phase5-persistence-repository.integration.test.ts`、`artifacts/reports/phase-5-summary.md`
+- [x] tenant_B/LEGAL 只读取 `BETA_LEGAL_MEMORY`。证据：`postgres-phase5-persistence-repository.integration.test.ts`、`artifacts/reports/phase-5-summary.md`
+- [x] 同租户跨业务无泄漏。证据：三 scope Memory canary integration、`artifacts/reports/phase-5-summary.md`
+- [x] 跨租户无泄漏。证据：三 scope Memory canary integration、`artifacts/reports/phase-5-summary.md`
+- [x] 恢复只加载当前 tenant/biz 的 Memory 与 Summary。证据：`phase5-adapters.unit.test.ts`、`lifecycle-restore.test.ts`
 
 ## I. 生命周期
 
-- [ ] L2 在 TTL 前不因 TTL 卸载。证据：
-- [ ] L2 在 TTL 边界可 checkpoint/unload。证据：
-- [ ] L2 卸载前 TaskState、Summary、Memory、Trace 已保存。证据：
-- [ ] L1 在 TTL 前不因 TTL 卸载。证据：
-- [ ] L1 在 TTL 边界且无活动 L2 时可 unload。证据：
-- [ ] 活动 L2 阻止 L1 unload。证据：
-- [ ] 持久化失败阻止 `UNLOADED` 状态。证据：
+- [x] L2 在 TTL 前不因 TTL 卸载。证据：`lifecycle-reaper.test.ts`
+- [x] L2 在 TTL 边界可 checkpoint/unload。证据：`lifecycle-reaper.test.ts`
+- [x] L2 卸载前 TaskState、Summary、Memory、Trace 已保存。证据：`phase5-checkpoint-writer.unit.test.ts`、`local-checkpoint-volume.unit.test.ts`
+- [x] L1 在 TTL 前不因 TTL 卸载。证据：`lifecycle-reaper.test.ts`
+- [x] L1 在 TTL 边界且无活动 L2 时可 unload。证据：`lifecycle-reaper.test.ts`、`openclaw-lifecycle-runtime-unloader.unit.test.ts`
+- [x] 活动 L2 阻止 L1 unload。证据：`lifecycle-reaper.test.ts`
+- [x] 持久化失败阻止 `UNLOADED` 状态。证据：`lifecycle-reaper.test.ts`、`phase5-checkpoint-writer.unit.test.ts`
 
 ## J. 恢复
 
-- [ ] L1 恢复后 `logical_agent_id` 不变。证据：
-- [ ] L1 恢复后 `runtime_instance_id` 改变。证据：
-- [ ] `restored_from_runtime_instance_id` 正确。证据：
-- [ ] Session Summary 恢复。证据：
-- [ ] Memory 和 Trace 索引恢复。证据：
-- [ ] 未完成 TaskState 可读取或继续。证据：
-- [ ] 已移除 Tool 不会因旧状态恢复。证据：
+- [x] L1 恢复后 `logical_agent_id` 不变。证据：`lifecycle-restore.test.ts`
+- [x] L1 恢复后 `runtime_instance_id` 改变。证据：`lifecycle-restore.test.ts`
+- [x] `restored_from_runtime_instance_id` 正确。证据：`lifecycle-restore.test.ts`、`phase5-adapters.unit.test.ts`
+- [x] Session Summary 恢复。证据：L1 local checkpoint fallback 与 task summary 用例，`phase5-adapters.unit.test.ts`、`lifecycle-restore.test.ts`
+- [x] Memory 和 Trace 索引恢复。证据：`lifecycle-restore.test.ts`
+- [x] 未完成 TaskState 可读取或继续。证据：`lifecycle-restore.test.ts`、`postgres-phase5-persistence-repository.integration.test.ts`
+- [x] 已移除 Tool 不会因旧状态恢复。证据：`CatalogCheckpointCapabilitySummarySource` current-policy intersection，`phase5-checkpoint-writer.unit.test.ts`
 - [ ] Control Plane 重启后可从 PostgreSQL 重建 Runtime cache。证据：
 
 ## K. 云端部署

@@ -3,6 +3,14 @@ import type { ExecutionContextRecord } from "@agentnest/persistence";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  DemoToolOnceGuard,
+  type DemoToolCompletionKey,
+  type DemoToolCompletionRecord,
+  type DemoToolCompletionRepository,
+  type RecordDemoToolCompletionInput,
+} from "../../apps/control-plane/src/application/lifecycle-tool-once.js";
+
+import {
   DataGatewayApplication,
   GatewayDenyReason,
   InMemoryDataGatewayFixtures,
@@ -29,6 +37,44 @@ const ROBOT_CONTEXT_ID = "22222222-2222-4222-8222-222222222222";
 const LEGAL_B_CONTEXT_ID = "33333333-3333-4333-8333-333333333333";
 const EXPIRED_CONTEXT_ID = "44444444-4444-4444-8444-444444444444";
 const OWNERSHIP_CONTEXT_ID = "55555555-5555-4555-8555-555555555555";
+const RESTORED_LEGAL_CONTEXT_ID = "77777777-7777-4777-8777-777777777777";
+
+function toolCompletionKey(input: DemoToolCompletionKey): string {
+  return JSON.stringify([
+    input.scope.tenantId,
+    input.scope.bizDomain,
+    input.logicalAgentId,
+    input.taskId,
+    input.toolName,
+    input.action,
+    input.resourceType,
+    input.resourceId,
+  ]);
+}
+
+class InMemoryToolCompletionRepository implements DemoToolCompletionRepository {
+  readonly #records = new Map<string, DemoToolCompletionRecord>();
+
+  public findToolCompletion(
+    input: DemoToolCompletionKey,
+  ): Promise<DemoToolCompletionRecord | null> {
+    return Promise.resolve(this.#records.get(toolCompletionKey(input)) ?? null);
+  }
+
+  public recordToolCompletion(input: RecordDemoToolCompletionInput): Promise<{
+    readonly record: DemoToolCompletionRecord;
+    readonly created: boolean;
+  }> {
+    const key = toolCompletionKey(input);
+    const existing = this.#records.get(key);
+    if (existing !== undefined) {
+      return Promise.resolve({ record: existing, created: false });
+    }
+    const record: DemoToolCompletionRecord = { ...input };
+    this.#records.set(key, record);
+    return Promise.resolve({ record, created: true });
+  }
+}
 class TestExecutionContextLookup implements ExecutionContextLookup, ExternalExecutionContextLookup {
   public readonly contexts = new Map<string, unknown>();
   public readonly calls: string[] = [];
@@ -164,6 +210,14 @@ function dataHarness(): DataHarness {
   lookup.contexts.set(LEGAL_CONTEXT_ID, executionContext());
   lookup.contexts.set(ROBOT_CONTEXT_ID, robotContext());
   lookup.contexts.set(
+    RESTORED_LEGAL_CONTEXT_ID,
+    executionContext({
+      execution_context_id: RESTORED_LEGAL_CONTEXT_ID,
+      runtime_instance_id: "runtime_legal_a_restored",
+      session_id: "session_legal_a_restored",
+    }),
+  );
+  lookup.contexts.set(
     LEGAL_B_CONTEXT_ID,
     executionContext({
       execution_context_id: LEGAL_B_CONTEXT_ID,
@@ -185,6 +239,7 @@ function dataHarness(): DataHarness {
       fixtures,
       traceSink: traces,
       clock: fixedClock,
+      toolOnceGuard: new DemoToolOnceGuard(new InMemoryToolCompletionRepository(), fixedClock),
     }),
   };
 }
@@ -279,6 +334,7 @@ describe("ExecutionContext persistence adapters", () => {
       fixtures,
       traceSink: traces,
       clock: fixedClock,
+      toolOnceGuard: new DemoToolOnceGuard(new InMemoryToolCompletionRepository(), fixedClock),
     });
     await expect(application.execute(legalRequest())).resolves.toMatchObject({
       success: true,
@@ -363,6 +419,78 @@ describe("Data Gateway Mock", () => {
         },
       ],
     });
+  });
+
+  it("reuses a completed write after runtime restore without repeating the business operation", async () => {
+    const harness = dataHarness();
+    const first = await harness.application.execute(
+      legalRequest({
+        request_id: "tool_req_legal_write_initial",
+        trace_id: "trace_legal_write_initial",
+        tool_name: "legal_analysis_write",
+        action: "write",
+        params: { analysis: "Persist this analysis once." },
+      }),
+    );
+    const restored = await harness.application.execute(
+      legalRequest({
+        request_id: "tool_req_legal_write_restored",
+        trace_id: "trace_legal_write_restored",
+        execution_context_id: RESTORED_LEGAL_CONTEXT_ID,
+        tool_name: "legal_analysis_write",
+        action: "write",
+        params: { analysis: "This retry must not overwrite the completed result." },
+      }),
+    );
+
+    expect(first).toMatchObject({
+      success: true,
+      data: { result_id: "legal_analysis_001", stored: true },
+    });
+    expect(restored).toMatchObject({
+      success: true,
+      data: { result_id: "legal_analysis_001", stored: true },
+    });
+    const fixtureSnapshot = harness.fixtures.snapshot();
+    expect(fixtureSnapshot.legalAnalyses).toHaveLength(1);
+    expect(fixtureSnapshot.operations).toHaveLength(1);
+    expect(fixtureSnapshot).toMatchObject({
+      legalAnalyses: [
+        {
+          resultId: "legal_analysis_001",
+          analysis: "Persist this analysis once.",
+        },
+      ],
+      operations: [{ toolName: "legal_analysis_write", action: "write" }],
+    });
+    expect(harness.traces.records).toMatchObject([
+      {
+        requestId: "tool_req_legal_write_initial",
+        traceId: "trace_legal_write_initial",
+        executionContextId: LEGAL_CONTEXT_ID,
+        tenantId: "tenant_A",
+        bizDomain: "LEGAL",
+        logicalAgentId: `tb_${"a".repeat(20)}`,
+        runtimeInstanceId: "runtime_legal_a_001",
+        sessionId: "session_legal_a_001",
+        taskId: "task_legal_a_001",
+        decision: "ALLOW",
+        reason: "TOOL_EXECUTED",
+      },
+      {
+        requestId: "tool_req_legal_write_restored",
+        traceId: "trace_legal_write_restored",
+        executionContextId: RESTORED_LEGAL_CONTEXT_ID,
+        tenantId: "tenant_A",
+        bizDomain: "LEGAL",
+        logicalAgentId: `tb_${"a".repeat(20)}`,
+        runtimeInstanceId: "runtime_legal_a_restored",
+        sessionId: "session_legal_a_restored",
+        taskId: "task_legal_a_001",
+        decision: "ALLOW",
+        reason: "TOOL_RESULT_REUSED",
+      },
+    ]);
   });
 
   it("denies LEGAL-to-ROBOT_DOG tool escalation with no side effect and a DENY trace", async () => {
@@ -489,6 +617,7 @@ describe("Data Gateway Mock", () => {
       fixtures: harness.fixtures,
       traceSink: harness.traces,
       clock: fixedClock,
+      toolOnceGuard: new DemoToolOnceGuard(new InMemoryToolCompletionRepository(), fixedClock),
     });
     servers.push(server);
     const before = harness.fixtures.snapshot();
