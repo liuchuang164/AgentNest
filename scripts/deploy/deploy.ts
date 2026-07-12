@@ -184,6 +184,8 @@ test "$(cat "$workdir/.agentnest-project")" = agentnest-demo
 source_dir="$workdir/source"
 env_file="$workdir/config/agentnest.env"
 install -d -m 0755 "$workdir/reports"
+compose_log="$workdir/reports/compose-deploy.log"
+: > "$compose_log"
 test -f "$source_dir/compose.yaml"
 test "$(stat -c '%a' "$env_file")" = 600
 if docker info >/dev/null 2>&1; then
@@ -202,10 +204,10 @@ compose() {
 
 if [ "$phase" = dependencies ]; then
   stage=compose_build
-  compose build
+  compose build > "$compose_log" 2>&1
 fi
 stage=postgres_start
-compose up -d postgres
+compose up -d postgres >> "$compose_log" 2>&1
 stage=postgres_readiness
 attempt=0
 until compose exec -T postgres pg_isready -U agentnest -d agentnest >/dev/null 2>&1; do
@@ -220,7 +222,7 @@ for sql in "$source_dir"/infra/postgres/migrations/*.sql "$source_dir"/infra/pos
 done
 if [ "$phase" = dependencies ]; then
   stage=gateway_mock_start
-  compose up -d data-gateway-mock external-gateway-mock
+  compose up -d data-gateway-mock external-gateway-mock >> "$compose_log" 2>&1
   ports=$(awk -F= '$1 ~ /^(DATA_GATEWAY_MOCK_PORT|EXTERNAL_GATEWAY_MOCK_PORT)$/ {print $2}' "$env_file")
   for port in $ports; do
     stage="gateway_mock_readiness_$port"
@@ -237,7 +239,7 @@ if [ "$phase" = dependencies ]; then
 fi
 if [ "$phase" != final ]; then exit 32; fi
 stage=compose_final_start
-compose up -d --remove-orphans
+compose up -d --remove-orphans >> "$compose_log" 2>&1
 
 ports=$(awk -F= '$1 ~ /^(CONTROL_PLANE_PORT|DATA_GATEWAY_MOCK_PORT|EXTERNAL_GATEWAY_MOCK_PORT)$/ {print $2}' "$env_file")
 for port in $ports; do
