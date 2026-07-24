@@ -160,6 +160,27 @@ OpenClaw stable
 - [`docs/codex-kickoff-prompt.md`](docs/codex-kickoff-prompt.md)：可直接交给 Codex 的提示词
 - [`docs/remote-preflight-recovery.md`](docs/remote-preflight-recovery.md)：Codex 跑偏或远端 preflight 卡住时的收口指令
 
+### Hermes 独立工作流
+
+Hermes 认知编排开发使用独立分支、独立任务书和独立验收，不与上面的 OpenClaw
+Demo Phase 混合：
+
+- [`HERMES_CODEX_TASK.md`](HERMES_CODEX_TASK.md)：Hermes 分阶段任务书
+- [`apps/hermes/AGENTS.md`](apps/hermes/AGENTS.md)：Hermes 代码作用域最高优先级约束
+- [`docs/hermes/README.md`](docs/hermes/README.md)：Hermes 约束导航
+- [`docs/hermes/architecture.md`](docs/hermes/architecture.md)：认知编排总体架构
+- [`docs/hermes/main-flows.md`](docs/hermes/main-flows.md)：Hermes 16 条主流程
+- [`docs/hermes/contracts.md`](docs/hermes/contracts.md)：统一入口和 Control Plane 契约
+- [`docs/hermes/sop-dag.md`](docs/hermes/sop-dag.md)：SOP、DAG、并行和重规划
+- [`docs/hermes/control-plane-boundary.md`](docs/hermes/control-plane-boundary.md)：Hermes 与 Control Plane 边界
+- [`docs/hermes/security-isolation.md`](docs/hermes/security-isolation.md)：多租户和 Prompt 安全
+- [`docs/hermes/validation-test-plan.md`](docs/hermes/validation-test-plan.md)：测试方案
+- [`docs/hermes/acceptance-checklist.md`](docs/hermes/acceptance-checklist.md)：验收证据
+- [`docs/hermes/codex-kickoff-prompt.md`](docs/hermes/codex-kickoff-prompt.md)：后续编码启动提示词
+
+三种调用模式中，只有 `HERMES_OPENCLAW` 进入复杂多 Agent 编排；
+`HERMES_ONLY` 和 `OPENCLAW_ONLY` 都保持直接调用链路。
+
 ## 本地机密配置
 
 ```bash
