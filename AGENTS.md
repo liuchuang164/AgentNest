@@ -356,3 +356,42 @@ Demo 完成条件：
 - 文档清楚区分 Demo 方案和未来生产化建议。
 
 任何新增复杂安全机制都必须先回答：**它是否直接用于证明上述 Demo 目标？** 如果不是，留到“生产化建议”，不要实现。
+
+---
+
+## 11. 独立工作流路由：Hermes
+
+本仓库可以在独立分支开发 Hermes 认知编排服务，但必须与本文件前述 OpenClaw
+三层 Demo 工作流隔离。
+
+当任务明确要求开发 Hermes，且变更位于：
+
+```text
+apps/hermes/**
+docs/hermes/**
+HERMES_CODEX_TASK.md
+```
+
+必须先完整阅读：
+
+```text
+apps/hermes/AGENTS.md
+HERMES_CODEX_TASK.md
+docs/hermes/README.md 及其列出的全部约束
+```
+
+在 `apps/hermes/**` 内，嵌套 `AGENTS.md` 对 Hermes 专属边界具有更高优先级。
+根目录的机密保护、测试真实性、稳定技术栈和 Git 安全规则继续生效。
+
+Hermes 工作流只允许实现任务理解、SOP、DAG、执行策略、质量验收和有界重规划。
+禁止借 Hermes 任务修改或实现：
+
+```text
+OpenClaw Runtime / Profile / Session / sessions_spawn
+Agent Control Plane 的资源、配额、限流、队列和生命周期
+Tool/Data/External/File Gateway
+业务 Skill 或 Tool Handler
+```
+
+Hermes 工作不得更新 OpenClaw Demo Issue #1；必须使用独立 Issue/PR。若任务没有
+明确指定 Hermes，则仍按本文件第 1—10 节和 `CODEX_TASK.md` 执行 OpenClaw Demo。
