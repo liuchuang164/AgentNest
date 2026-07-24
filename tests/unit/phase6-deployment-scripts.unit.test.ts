@@ -95,4 +95,16 @@ describe("Phase 6 remote shell transport", () => {
     expect(phase3Call).toBeGreaterThan(removeStaleReport);
     expect(remoteCall).toBeGreaterThan(phase3Call);
   });
+
+  it("keeps the natural-language entry probe separate from the deterministic Phase 6 gate", async () => {
+    const packageJson = await readFile(resolve(workspaceRoot, "package.json"), "utf8");
+    const mainPrompt = await readFile(
+      resolve(workspaceRoot, "infra/openclaw/workspaces/main/AGENTS.md"),
+      "utf8",
+    );
+    expect(packageJson).toContain('"demo:verify-natural"');
+    expect(mainPrompt).toContain("AGENTNEST_NL_ROUTE_PROBE_V1");
+    expect(mainPrompt).toContain("AGENTNEST_L0_NL_ROUTED");
+    expect(mainPrompt).toContain("AGENTNEST_L0_NL_REJECTED|reason=UNAUTHORIZED_CAPABILITY");
+  });
 });

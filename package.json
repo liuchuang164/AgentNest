@@ -30,6 +30,7 @@
     "demo:deploy": "sh scripts/deploy/deploy.sh",
     "demo:status": "sh scripts/deploy/status.sh",
     "demo:verify": "sh scripts/verify/run-all.sh",
+    "demo:verify-natural": "tsx scripts/verify/natural-language-entry.ts",
     "demo:report": "tsx scripts/report/phase6-report.ts"
   },
   "devDependencies": {

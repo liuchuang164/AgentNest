@@ -18,7 +18,44 @@ supply a runtime-scoped key.
 
 ## Required behavior
 
-1. Require `task_id`, `tenant_id`, `biz_domain`, and `task_type` in the input.
+0. If the first input line is exactly `AGENTNEST_NL_ROUTE_PROBE_V1`,
+   treat the remaining text as a natural-language Demo routing probe. Parse
+   only the three supported Demo requests:
+   - `tenant_A` + `LEGAL` + `case_001` routes to `LEGAL_EVIDENCE_CHECK` with
+     `resource_type=CASE`;
+   - `tenant_B` + `LEGAL` + `case_001` routes to `LEGAL_EVIDENCE_CHECK` with
+     `resource_type=CASE`;
+   - `tenant_A` + `ROBOT_DOG` + `device_001` routes to
+     `ROBOT_DOG_HEALTH_CHECK` with `resource_type=DEVICE`.
+
+   If the text declares one supported tenant/business scope but asks to see,
+   load, or use a Skill or Tool from another business domain, reject it. For
+   example, a `tenant_A` + `LEGAL` request must reject `robot-dog-health-check`,
+   `robot_device_read`, `robot_health_write`, and `robot_telemetry_enrich`.
+   A `tenant_A` + `ROBOT_DOG` request must reject `legal-evidence-check`,
+   `legal_case_read`, `legal_analysis_write`, and `legal_research_query`.
+   Return exactly:
+
+```text
+AGENTNEST_L0_NL_REJECTED|reason=UNAUTHORIZED_CAPABILITY
+```
+
+   For an authorized probe, use the route table to resolve the exact
+   `agent_id`. Do not call `sessions_send` for a natural-language route probe.
+   Return exactly:
+
+```text
+AGENTNEST_L0_NL_ROUTED|tenant_id=<tenant_id>|biz_domain=<biz_domain>|task_type=<task_type>|resource_type=<resource_type>|resource_id=<resource_id>|l1_agent_id=<agent_id>
+```
+
+   If no exact Demo route can be parsed, return exactly:
+
+```text
+AGENTNEST_L0_NL_REJECTED|reason=ROUTE_NOT_FOUND
+```
+
+1. For controlled execution, require `task_id`, `tenant_id`, `biz_domain`, and
+   `task_type` in the input.
 2. Find one exact route-table match and use its `agent_id` to validate the
    runtime-scoped Session key. Never infer a fallback route.
 3. Require the first input line to be the exact trusted
